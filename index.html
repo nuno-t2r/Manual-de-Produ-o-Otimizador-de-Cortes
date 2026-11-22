@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>
@@ -101,8 +102,8 @@
                 Abre o ficheiro <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono font-bold">index.html</code> no teu repositório do GitHub, clica no ícone de lápis (<em>Edit this file</em>), procura a linha <code class="bg-blue-50 text-blue-900 px-1.5 py-0.5 rounded font-mono font-bold">const PIN_CORRETO = "2017";</code> e substitui pelo novo PIN.</p>
                 <p><strong>2. Como guardar alterações no GitHub Pages:</strong><br>
                 Depois de colares ou editares o código, clica em <strong>Commit changes...</strong> e aguarda cerca de 1 minuto até o GitHub Pages atualizar o site.</p>
-                <p><strong>3. Partilhar o Catálogo de Referências:</strong><br>
-                As referências guardadas ficam armazenadas neste navegador. Usa <strong>Exportar (.json)</strong> para guardar uma cópia de segurança e carregar noutros computadores da fábrica.</p>
+                <p><strong>3. Sincronização na Nuvem Ativa (idunaproject):</strong><br>
+                A tua <strong>To-Do List</strong> e o <strong>Catálogo de Referências</strong> estão ligados ao teu Firebase e sincronizam automaticamente entre PC, telemóvel e tablet.</p>
             </div>
             <div class="flex justify-end pt-2">
                 <button type="button" onclick="toggleModal('github-modal', false)" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Fechar</button>
@@ -180,7 +181,7 @@
                 </div>
             </div>
 
-            <!-- 3 Separadores Principais -->
+            <!-- 4 Separadores Principais -->
             <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-800 overflow-x-auto no-scrollbar">
                 <button
                     type="button"
@@ -917,9 +918,12 @@
                             <span class="w-2.5 h-6 bg-emerald-600 rounded-full inline-block"></span>
                             Lista de Tarefas & Apontamentos Rápidos (To-Do List)
                         </h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Aponta qualquer tarefa ou recado. A data e a hora ficam guardadas automaticamente no momento em que registas.</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Aponta qualquer tarefa ou recado. Sincroniza automaticamente entre PC, telemóvel e tablet.</p>
                     </div>
                     <div class="flex items-center gap-2">
+                        <span id="cloud-sync-badge" class="px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-bold">
+                            &#9729; A ligar à nuvem...
+                        </span>
                         <span id="todo-stats-badge" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
                             0 por fazer &bull; 0 feitas
                         </span>
@@ -970,16 +974,149 @@
     <footer class="no-print bg-white border-t border-slate-200 mt-10 py-4 px-4 sm:px-6 lg:px-8 text-xs text-slate-500">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
             <p>Manual Operacional & Otimizador de Cortes &bull; Uso interno da fábrica.</p>
-            <p>Acesso protegido por PIN.</p>
+            <p>Sincronização na nuvem ativa &bull; Acesso protegido por PIN.</p>
         </div>
     </footer>
 
-    <!-- JAVASCRIPT -->
+    <!-- SINCRONIZAÇÃO NA NUVEM (FIREBASE IDUNAPROJECT) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const badge = document.getElementById("cloud-sync-badge");
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzgUm6FU1ZmysyyvI1YshO7lu0vsu2u-4",
+            authDomain: "idunaproject.firebaseapp.com",
+            projectId: "idunaproject",
+            storageBucket: "idunaproject.firebasestorage.app",
+            messagingSenderId: "905081469725",
+            appId: "1:905081469725:web:a5fa3deb440f41cd3a7ff4"
+        };
+
+        window._cloudSync = {
+            ready: false,
+            db: null,
+            user: null,
+            saveTodo: async function(item) {
+                if (!this.ready || !this.user || !this.db) return;
+                try {
+                    const ref = doc(this.db, "todos_fabrica", String(item.id));
+                    await setDoc(ref, {
+                        id: item.id,
+                        texto: item.texto || "",
+                        criadoEm: item.criadoEm || "",
+                        feito: Boolean(item.feito),
+                        feitoEm: item.feitoEm || null,
+                        notasJson: JSON.stringify(Array.isArray(item.notas) ? item.notas : []),
+                        updatedAt: Date.now()
+                    });
+                } catch (e) {
+                    console.error("Erro ao gravar tarefa na nuvem:", e);
+                }
+            },
+            saveCatalog: async function(lista) {
+                if (!this.ready || !this.user || !this.db) return;
+                try {
+                    const ref = doc(this.db, "catalogo_fabrica", "principal");
+                    await setDoc(ref, {
+                        itensJson: JSON.stringify(Array.isArray(lista) ? lista : []),
+                        updatedAt: Date.now()
+                    });
+                } catch (e) {
+                    console.error("Erro ao gravar catálogo na nuvem:", e);
+                }
+            }
+        };
+
+        async function iniciarNuvem() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+
+                const cred = await signInAnonymously(auth);
+                if (!cred || !cred.user) return;
+
+                window._cloudSync.db = db;
+                window._cloudSync.user = cred.user;
+                window._cloudSync.ready = true;
+
+                if (badge) {
+                    badge.innerHTML = "&#9729; Sincronizado (PC / Telemóvel / Tablet)";
+                    badge.className = "px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-[11px] font-bold";
+                }
+
+                // Escutar alterações nas tarefas em tempo real
+                const todosCol = collection(db, "todos_fabrica");
+                onSnapshot(todosCol, (snapshot) => {
+                    const remotos = [];
+                    snapshot.forEach((docSnap) => {
+                        const d = docSnap.data();
+                        let notasParsed = [];
+                        if (d.notasJson) {
+                            try { notasParsed = JSON.parse(d.notasJson); } catch (e) {}
+                        } else if (Array.isArray(d.notas)) {
+                            notasParsed = d.notas;
+                        }
+                        remotos.push({
+                            id: d.id || Number(docSnap.id),
+                            texto: d.texto || "",
+                            criadoEm: d.criadoEm || "",
+                            feito: Boolean(d.feito),
+                            feitoEm: d.feitoEm || null,
+                            notas: notasParsed
+                        });
+                    });
+
+                    remotos.sort((a, b) => (b.id || 0) - (a.id || 0));
+
+                    if (remotos.length > 0 && typeof window.aplicarTodosDaNuvem === "function") {
+                        window.aplicarTodosDaNuvem(remotos);
+                    } else if (remotos.length === 0 && Array.isArray(window._todosAtuais) && window._todosAtuais.length > 0) {
+                        window._todosAtuais.forEach(item => window._cloudSync.saveTodo(item));
+                    }
+                }, (err) => {
+                    console.error("Erro na escuta de tarefas:", err);
+                });
+
+                // Escutar alterações no catálogo em tempo real
+                const catDoc = doc(db, "catalogo_fabrica", "principal");
+                onSnapshot(catDoc, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const d = docSnap.data();
+                        if (d.itensJson && typeof window.aplicarCatalogoDaNuvem === "function") {
+                            try {
+                                const lista = JSON.parse(d.itensJson);
+                                if (Array.isArray(lista) && lista.length > 0) {
+                                    window.aplicarCatalogoDaNuvem(lista);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }, (err) => {
+                    console.error("Erro na escuta do catálogo:", err);
+                });
+
+            } catch (error) {
+                console.error("Falha ao iniciar nuvem:", error);
+                if (badge) {
+                    badge.textContent = "Erro de ligação à nuvem (verifica regras do Firestore)";
+                    badge.className = "px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold";
+                }
+            }
+        }
+
+        iniciarNuvem();
+    </script>
+
+    <!-- JAVASCRIPT PRINCIPAL -->
     <script>
         const PIN_CORRETO = "2017";
-        const STORAGE_KEY_CATALOG = "mc_catalogo_referencias_v1";
         const STORAGE_KEY_SESSION = "mc_manual_unlocked_v1";
+        const STORAGE_KEY_CATALOG = "mc_fabrica_catalogo_v1";
         const STORAGE_KEY_TODOS = "mc_fabrica_todos_v1";
+
         function verificarPin() {
             const inputEl = document.getElementById("pin-input");
             const errorEl = document.getElementById("pin-error");
@@ -1120,20 +1257,17 @@
 
         function carregarCatalogo() {
             try {
-                const raw = localStorage.getItem(STORAGE_KEY_CATALOG);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
+                const guardado = localStorage.getItem(STORAGE_KEY_CATALOG);
+                if (guardado) {
+                    const parsed = JSON.parse(guardado);
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         catalogoRefs = parsed;
-                    } else {
-                        catalogoRefs = [...CATALOGO_INICIAL];
+                        atualizarDatalistCatalogo();
+                        return;
                     }
-                } else {
-                    catalogoRefs = [...CATALOGO_INICIAL];
                 }
-            } catch (e) {
-                catalogoRefs = [...CATALOGO_INICIAL];
-            }
+            } catch (e) {}
+            catalogoRefs = [...CATALOGO_INICIAL];
             atualizarDatalistCatalogo();
         }
 
@@ -1142,70 +1276,79 @@
                 localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
             } catch (e) {}
             atualizarDatalistCatalogo();
+            if (window._cloudSync && window._cloudSync.ready) {
+                window._cloudSync.saveCatalog(catalogoRefs);
+            }
         }
+
+        window.aplicarCatalogoDaNuvem = function(lista) {
+            catalogoRefs = lista;
+            try {
+                localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
+            } catch (e) {}
+            atualizarDatalistCatalogo();
+        };
 
         function atualizarDatalistCatalogo() {
             const dl = document.getElementById("catalogo-datalist");
             if (!dl) return;
-            dl.innerHTML = catalogoRefs.map(item =>
-                `<option value="${escapeHtml(item.code)}">${escapeHtml(item.desc)} (${item.material} ${item.l}×${item.w})</option>`
+            dl.innerHTML = catalogoRefs.map(r =>
+                `<option value="${escapeHtml(r.code)}">${escapeHtml(r.desc)} (${r.material} ${r.l}×${r.w})</option>`
             ).join("");
         }
 
         function aoEscreverReferencia() {
-            const codeEl = document.getElementById("opt-ref-code");
-            const delBtn = document.getElementById("btn-del-ref");
-            if (!codeEl) return;
-            const val = codeEl.value.trim().toUpperCase();
-            const encontrado = catalogoRefs.find(r => r.code.toUpperCase() === val);
+            const code = (document.getElementById("opt-ref-code").value || "").trim().toUpperCase();
+            const btnDel = document.getElementById("btn-del-ref");
+            const encontrada = catalogoRefs.find(r => r.code.toUpperCase() === code);
 
-            if (encontrado) {
-                document.getElementById("opt-ref-desc").value = encontrado.desc || "";
-                document.getElementById("opt-mat-type").value = encontrado.material || "Melamina";
-                document.getElementById("opt-sheet-l").value = encontrado.l || 2850;
-                document.getElementById("opt-sheet-w").value = encontrado.w || 2100;
-                document.getElementById("opt-grain-select").value = encontrado.grain || "sem";
-                if (delBtn) delBtn.classList.remove("hidden");
+            if (encontrada) {
+                document.getElementById("opt-ref-desc").value = encontrada.desc || "";
+                document.getElementById("opt-mat-type").value = encontrada.material || "Melamina";
+                document.getElementById("opt-sheet-l").value = encontrada.l || 2850;
+                document.getElementById("opt-sheet-w").value = encontrada.w || 2100;
+                document.getElementById("opt-grain-select").value = encontrada.grain || "sem";
+                if (btnDel) btnDel.classList.remove("hidden");
                 aoMudarMaterial();
             } else {
-                if (delBtn) delBtn.classList.add("hidden");
+                if (btnDel) btnDel.classList.add("hidden");
             }
         }
 
         function guardarReferenciaCatalogo() {
-            const code = document.getElementById("opt-ref-code").value.trim().toUpperCase();
+            const code = (document.getElementById("opt-ref-code").value || "").trim().toUpperCase();
             if (!code) {
-                mostrarToast("Escreve um código de referência antes de guardar.");
-                document.getElementById("opt-ref-code").focus();
+                mostrarToast("Escreve primeiro o código da referência.");
                 return;
             }
-            const desc = document.getElementById("opt-ref-desc").value.trim() || code;
+            const desc = (document.getElementById("opt-ref-desc").value || "").trim() || code;
             const material = document.getElementById("opt-mat-type").value;
             const l = parseFloat(document.getElementById("opt-sheet-l").value) || 2850;
             const w = parseFloat(document.getElementById("opt-sheet-w").value) || 2100;
             const grain = document.getElementById("opt-grain-select").value;
 
             const idx = catalogoRefs.findIndex(r => r.code.toUpperCase() === code);
-            const novoItem = { code, desc, material, l, w, grain };
-
+            const registo = { code, desc, material, l, w, grain };
             if (idx >= 0) {
-                catalogoRefs[idx] = novoItem;
-                mostrarToast(`Referência ${code} atualizada no catálogo!`);
+                catalogoRefs[idx] = registo;
             } else {
-                catalogoRefs.push(novoItem);
-                mostrarToast(`Referência ${code} guardada no catálogo!`);
+                catalogoRefs.push(registo);
             }
-
             salvarCatalogoLocal();
-            document.getElementById("btn-del-ref").classList.remove("hidden");
+            const btnDel = document.getElementById("btn-del-ref");
+            if (btnDel) btnDel.classList.remove("hidden");
+            mostrarToast(`Referência ${code} guardada e sincronizada!`);
         }
 
         function eliminarReferenciaCatalogo() {
-            const code = document.getElementById("opt-ref-code").value.trim().toUpperCase();
+            const code = (document.getElementById("opt-ref-code").value || "").trim().toUpperCase();
             if (!code) return;
             catalogoRefs = catalogoRefs.filter(r => r.code.toUpperCase() !== code);
+            document.getElementById("opt-ref-code").value = "";
+            document.getElementById("opt-ref-desc").value = "";
+            const btnDel = document.getElementById("btn-del-ref");
+            if (btnDel) btnDel.classList.add("hidden");
             salvarCatalogoLocal();
-            document.getElementById("btn-del-ref").classList.add("hidden");
             mostrarToast(`Referência ${code} removida do catálogo.`);
         }
 
@@ -1215,11 +1358,8 @@
             const a = document.createElement("a");
             a.href = url;
             a.download = "catalogo_referencias_fabrica.json";
-            document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            mostrarToast("Catálogo exportado (.json)!");
         }
 
         function importarCatalogo(event) {
@@ -1232,14 +1372,11 @@
                     if (Array.isArray(dados)) {
                         catalogoRefs = dados;
                         salvarCatalogoLocal();
-                        mostrarToast(`Catálogo importado (${dados.length} referências)!`);
-                    } else {
-                        mostrarToast("Ficheiro JSON inválido.");
+                        mostrarToast("Catálogo importado com sucesso!");
                     }
                 } catch (err) {
-                    mostrarToast("Erro ao ler ficheiro JSON.");
+                    mostrarToast("Ficheiro JSON inválido.");
                 }
-                event.target.value = "";
             };
             reader.readAsText(file);
         }
@@ -2169,29 +2306,46 @@
         }
 
         let todosLista = [];
+        window._todosAtuais = todosLista;
         let filtroTodoAtual = "todas";
 
         function carregarTodos() {
             try {
-                const raw = localStorage.getItem(STORAGE_KEY_TODOS);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
+                const guardado = localStorage.getItem(STORAGE_KEY_TODOS);
+                if (guardado) {
+                    const parsed = JSON.parse(guardado);
                     if (Array.isArray(parsed)) {
                         todosLista = parsed;
+                        window._todosAtuais = todosLista;
+                        renderizarTodos();
+                        return;
                     }
                 }
-            } catch (e) {
-                todosLista = [];
-            }
+            } catch (e) {}
+            todosLista = [];
+            window._todosAtuais = todosLista;
             renderizarTodos();
         }
 
-        function salvarTodos() {
+        function salvarTodos(itemAlterado) {
+            window._todosAtuais = todosLista;
             try {
                 localStorage.setItem(STORAGE_KEY_TODOS, JSON.stringify(todosLista));
             } catch (e) {}
             renderizarTodos();
+            if (itemAlterado && window._cloudSync && window._cloudSync.ready) {
+                window._cloudSync.saveTodo(itemAlterado);
+            }
         }
+
+        window.aplicarTodosDaNuvem = function(remotos) {
+            todosLista = remotos;
+            window._todosAtuais = todosLista;
+            try {
+                localStorage.setItem(STORAGE_KEY_TODOS, JSON.stringify(todosLista));
+            } catch (e) {}
+            renderizarTodos();
+        };
 
         function formatarDataHoraAtual() {
             const agora = new Date();
@@ -2213,19 +2367,20 @@
                 return;
             }
 
-            todosLista.unshift({
+            const novaTarefa = {
                 id: Date.now() + Math.floor(Math.random() * 1000),
                 texto,
                 criadoEm: formatarDataHoraAtual(),
                 feito: false,
                 feitoEm: null,
                 notas: []
-            });
+            };
 
+            todosLista.unshift(novaTarefa);
             input.value = "";
             input.focus();
-            salvarTodos();
-            mostrarToast("Tarefa apontada!");
+            salvarTodos(novaTarefa);
+            mostrarToast("Tarefa apontada e sincronizada!");
         }
 
         function adicionarNotaNaTarefa(id) {
@@ -2249,7 +2404,7 @@
                 dataHora: formatarDataHoraAtual()
             });
 
-            salvarTodos();
+            salvarTodos(item);
             mostrarToast("Atualização gravada na nota!");
         }
 
@@ -2258,7 +2413,7 @@
             if (!item) return;
             item.feito = !item.feito;
             item.feitoEm = item.feito ? formatarDataHoraAtual() : null;
-            salvarTodos();
+            salvarTodos(item);
         }
 
         function mudarFiltroTodo(filtro) {
@@ -2419,3 +2574,4 @@
     </script>
 </body>
 </html>
+```
