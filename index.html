@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Manual de Produção & Otimizador de Cortes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .sheet-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                border: 2px solid #000000 !important;
+                box-shadow: none !important;
+                margin-bottom: 16px !important;
+            }
+            .svg-backdrop {
+                background-color: #1e293b !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-200 selection:text-slate-900">
+
+    <!-- ECRÃ DE BLOQUEIO POR PIN -->
+    <div id="lock-screen" class="no-print fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 sm:p-8 text-center space-y-5">
+            <div class="w-14 h-14 bg-blue-600/20 border border-blue-500/40 text-blue-400 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
+                &#128274;
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">Produção & Otimizador de Cortes</h2>
+                <p class="text-xs text-slate-400 mt-1">Acesso restrito à fábrica. Introduz o PIN para continuar.</p>
+            </div>
+            <div class="space-y-3">
+                <input
+                    type="password"
+                    id="pin-input"
+                    inputmode="numeric"
+                    maxlength="12"
+                    placeholder="••••"
+                    aria-label="Código PIN"
+                    class="w-full text-center tracking-[0.4em] text-xl font-bold bg-slate-950 text-white border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition"
+                >
+                <label class="flex items-center justify-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+                    <input type="checkbox" id="remember-session" checked class="rounded accent-blue-600 w-4 h-4">
+                    <span>Manter desbloqueado nesta sessão</span>
+                </label>
+                <button
+                    type="button"
+                    onclick="verificarPin()"
+                    class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition cursor-pointer"
+                >
+                    Entrar
+                </button>
+            </div>
+            <p id="pin-error" class="text-xs text-rose-400 font-medium min-h-[1rem]"></p>
+        </div>
+    </div>
+
+    <!-- NOTIFICAÇÃO FLUTUANTE (TOAST) -->
+    <div id="toast-box" class="no-print fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2">
+        <span class="text-emerald-400 font-bold text-sm">&#10003;</span>
+        <span id="toast-msg">Ação concluída!</span>
+    </div>
+
+    <!-- MODAL: INSTRUÇÕES PIN & GITHUB -->
+    <div id="github-modal" class="no-print fixed inset-0 z-40 hidden bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 class="text-lg font-bold text-slate-900">&#9881; Alterar PIN & Atualizar no GitHub</h3>
+                <button type="button" onclick="toggleModal('github-modal', false)" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2 py-1 rounded-lg cursor-pointer">&#10005;</button>
+            </div>
+            <div class="space-y-3 text-xs text-slate-700 leading-relaxed">
+                <p><strong>1. Como alterar o PIN de acesso:</strong><br>
+                Abre o ficheiro <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono font-bold">index.html</code> no teu repositório do GitHub, clica no ícone de lápis (<em>Edit this file</em>), procura a linha <code class="bg-blue-50 text-blue-900 px-1.5 py-0.5 rounded font-mono font-bold">const PIN_CORRETO = "2017";</code> e substitui pelo novo PIN.</p>
+                <p><strong>2. Como guardar alterações no GitHub Pages:</strong><br>
+                Depois de colares ou editares o código, clica em <strong>Commit changes...</strong> e aguarda cerca de 1 minuto até o GitHub Pages atualizar o site.</p>
+                <p><strong>3. Partilhar o Catálogo de Referências:</strong><br>
+                As referências guardadas ficam armazenadas neste navegador. Usa <strong>Exportar (.json)</strong> para guardar uma cópia de segurança e carregar noutros computadores da fábrica.</p>
+            </div>
+            <div class="flex justify-end pt-2">
+                <button type="button" onclick="toggleModal('github-modal', false)" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: COLAR PEÇAS DO EXCEL -->
+    <div id="excel-modal" class="no-print fixed inset-0 z-40 hidden bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 class="text-lg font-bold text-slate-900">&#128202; Colar Várias Peças do Excel</h3>
+                <button type="button" onclick="toggleModal('excel-modal', false)" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2 py-1 rounded-lg cursor-pointer">&#10005;</button>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Copia as colunas do Excel pela ordem: <strong class="text-slate-900">Comprimento (mm) | Largura (mm) | Quantidade | Etiqueta (opcional)</strong> e cola na caixa abaixo. O formato e as orlas selecionadas no formulário serão aplicados.
+            </p>
+            <textarea
+                id="excel-paste-area"
+                rows="7"
+                placeholder="Exemplo:&#10;1500&#9;1000&#9;10&#9;Tampo Grande&#10;500&#9;250&#9;5&#9;Prateleira&#10;125&#9;100&#9;13&#9;Tampa Pequena"
+                class="w-full font-mono text-xs bg-slate-50 border border-slate-300 rounded-xl p-3 focus:outline-none focus:border-blue-600"
+            ></textarea>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="toggleModal('excel-modal', false)" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 cursor-pointer">Cancelar</button>
+                <button type="button" onclick="importarDoExcel()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm cursor-pointer">Adicionar Todas à Lista</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CABEÇALHO PRINCIPAL & NAVEGAÇÃO -->
+    <header class="no-print bg-slate-900 text-slate-100 sticky top-0 z-30 shadow-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-sm">
+                            MC
+                        </div>
+                        <div>
+                            <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">Produção & Otimizador de Cortes</h1>
+                            <p class="text-[11px] text-slate-400">Plano de Chapas, Orladora, Cálculo de Orlas & Manual Completo</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 md:hidden">
+                        <button type="button" onclick="toggleModal('github-modal', true)" class="p-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer">&#9881;</button>
+                        <button type="button" onclick="bloquearManual()" title="Bloquear ecrã" class="p-2 rounded-xl bg-slate-800 text-blue-400 text-xs font-bold cursor-pointer">&#128274;</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-72">
+                        <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm pointer-events-none">&#128269;</span>
+                        <input
+                            type="text"
+                            id="search-input"
+                            oninput="filtrarManual()"
+                            placeholder="Pesquisar no manual (ex: Bela, B111, 60+40, incisor...)"
+                            class="w-full bg-slate-800 text-white placeholder-slate-400 text-xs sm:text-sm rounded-xl pl-9 pr-8 py-2 border border-slate-700 focus:outline-none focus:border-blue-500 transition"
+                        >
+                        <button
+                            type="button"
+                            id="clear-search-btn"
+                            onclick="limparPesquisa()"
+                            class="hidden absolute inset-y-0 right-2.5 flex items-center text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                            title="Limpar pesquisa"
+                        >&#10005;</button>
+                    </div>
+                    <button type="button" onclick="toggleModal('github-modal', true)" class="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition cursor-pointer">
+                        <span>&#9881; PIN / GitHub</span>
+                    </button>
+                    <button type="button" onclick="bloquearManual()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-semibold border border-slate-700 transition cursor-pointer">
+                        <span>&#128274; Bloquear</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3 Separadores Principais -->
+            <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-800 overflow-x-auto no-scrollbar">
+                <button
+                    type="button"
+                    onclick="mudarSeparador('tab-otimizador')"
+                    id="btn-tab-otimizador"
+                    class="tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-blue-600 text-white shadow-sm transition whitespace-nowrap cursor-pointer"
+                >
+                    &#128208; Otimizador de Cortes
+                </button>
+                <button
+                    type="button"
+                    onclick="mudarSeparador('tab-producao')"
+                    id="btn-tab-producao"
+                    class="tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap cursor-pointer"
+                >
+                    &#128203; Manual de Procedimentos Completo
+                </button>
+                <button
+                    type="button"
+                    onclick="mudarSeparador('tab-maquina')"
+                    id="btn-tab-maquina"
+                    class="tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap cursor-pointer"
+                >
+                    &#9881; Processo de Corte na Máquina
+                </button>
+                <button
+                    type="button"
+                    onclick="mudarSeparador('tab-todo')"
+                    id="btn-tab-todo"
+                    class="tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5"
+                >
+                    <span>&#9989; To-Do List</span>
+                    <span id="todo-nav-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Banner de Resultados da Pesquisa no Manual -->
+        <div id="search-status" class="no-print hidden mb-5 bg-blue-50 border border-blue-300 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-xs sm:text-sm text-blue-950">
+                A mostrar secções do manual correspondentes a <strong id="search-term-display" class="font-bold">""</strong> (<span id="search-count-display" class="font-bold">0</span> encontradas).
+            </p>
+            <button type="button" onclick="limparPesquisa()" class="text-xs font-bold text-blue-800 hover:text-blue-950 underline cursor-pointer">Limpar filtro</button>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SEPARADOR 1: OTIMIZADOR DE CORTES (ESTILO MAXCUT)                 -->
+        <!-- ================================================================= -->
+        <div id="tab-otimizador" class="tab-panel space-y-6">
+
+            <!-- Alerta Dinâmico da Máquina -->
+            <div id="opt-machine-banner" class="no-print rounded-2xl p-4 border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-950 text-emerald-50 border-emerald-800">
+                <div class="flex items-start sm:items-center gap-3">
+                    <span class="text-2xl">&#9881;</span>
+                    <div class="text-xs sm:text-sm leading-relaxed" id="opt-machine-banner-text">
+                        <strong>MELAMINA:</strong> Ligar sempre o <strong>Incisor (&bull;&bull;)</strong>! Folgas ativas: <strong>+0 mm</strong> (reta) ou <strong>+10 mm</strong> (redonda) + compensação do pré-fresador.
+                    </div>
+                </div>
+                <button type="button" onclick="window.print()" class="self-start sm:self-center px-4 py-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 text-xs font-extrabold shadow-xs cursor-pointer whitespace-nowrap">
+                    &#128424; Imprimir Planos (A4)
+                </button>
+            </div>
+
+            <!-- SECÇÃO 1 & 2: MATERIAL / CATÁLOGO + SERRA, LIMPEZA E ORLADORA -->
+            <div class="no-print grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- Secção 1: Material & Placa-Mãe (7 colunas) -->
+                <div class="lg:col-span-7 bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <h2 class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-6 bg-blue-600 rounded-full inline-block"></span>
+                            1. Material & Catálogo de Referências
+                        </h2>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="exportarCatalogo()" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">Exportar (.json)</button>
+                            <label class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">
+                                Importar (.json)
+                                <input type="file" accept=".json" onchange="importarCatalogo(event)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        <div class="sm:col-span-5">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Referência (selecionar ou escrever)</label>
+                            <input
+                                type="text"
+                                id="opt-ref-code"
+                                list="catalogo-datalist"
+                                oninput="aoEscreverReferencia()"
+                                placeholder="Ex: B111, 060, L121..."
+                                class="w-full font-mono font-extrabold uppercase bg-blue-50/70 border border-blue-300 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-600"
+                            >
+                            <datalist id="catalogo-datalist"></datalist>
+                        </div>
+                        <div class="sm:col-span-7">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Descrição / Acabamento</label>
+                            <input
+                                type="text"
+                                id="opt-ref-desc"
+                                placeholder="Ex: HPL Branco / Melamina Branco Polar..."
+                                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-600"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-12 gap-3 items-end">
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Material</label>
+                            <select id="opt-mat-type" onchange="aoMudarMaterial()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold focus:outline-none focus:border-blue-600">
+                                <option value="Melamina">Melamina</option>
+                                <option value="HPL">HPL</option>
+                                <option value="MDF">MDF</option>
+                                <option value="Linoleo">Linóleo</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Comp. Placa (mm)</label>
+                            <input type="number" id="opt-sheet-l" value="2850" min="100" oninput="executarOtimizacao(false)" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-sm font-semibold">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Larg. Placa (mm)</label>
+                            <input type="number" id="opt-sheet-w" value="2100" min="100" oninput="executarOtimizacao(false)" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-sm font-semibold">
+                        </div>
+                        <div class="col-span-2 sm:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Sentido do Veio</label>
+                            <select id="opt-grain-select" onchange="executarOtimizacao(false)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-bold focus:outline-none focus:border-blue-600">
+                                <option value="sem">Sem Veio (Roda 90°)</option>
+                                <option value="com">Com Veio (Fixo)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                        <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span class="text-slate-400 font-semibold">Medidas Padrão:</span>
+                            <button type="button" onclick="aplicarMedidaChapa(2850, 2100, 'Melamina')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 font-mono text-slate-700 cursor-pointer">2850&times;2100</button>
+                            <button type="button" onclick="aplicarMedidaChapa(2800, 2070, 'Melamina')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 font-mono text-slate-700 cursor-pointer">2800&times;2070</button>
+                            <button type="button" onclick="aplicarMedidaChapa(3050, 1300, 'HPL')" class="px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 font-mono text-blue-900 border border-blue-200 cursor-pointer">3050&times;1300 (HPL)</button>
+                            <button type="button" onclick="aplicarMedidaChapa(3070, 1320, 'HPL')" class="px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 font-mono text-blue-900 border border-blue-200 cursor-pointer">3070&times;1320 (HPL)</button>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="eliminarReferenciaCatalogo()" id="btn-del-ref" class="hidden px-2.5 py-1.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold cursor-pointer">Apagar</button>
+                            <button type="button" onclick="guardarReferenciaCatalogo()" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-blue-400 text-xs font-bold shadow-xs cursor-pointer">
+                                &#128190; Guardar Ref. no Catálogo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Secção 2: Serra, Margem de Limpeza & Orladora (5 colunas) -->
+                <div class="lg:col-span-5 bg-white rounded-2xl shadow-xs border border-slate-200 p-5 flex flex-col justify-between space-y-4">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                                <span class="w-2.5 h-6 bg-blue-600 rounded-full inline-block"></span>
+                                2. Serra, Limpeza & Orladora
+                            </h2>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2.5 text-xs">
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Serra (mm)</label>
+                                <input type="number" id="opt-kerf" value="4" min="0" max="15" step="0.1" oninput="executarOtimizacao(false)" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-sm font-semibold">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-amber-900 mb-1" title="Desconta esta margem nos 4 lados da placa-mãe para remover imperfeições">Limpeza (mm)</label>
+                                <input type="number" id="opt-trim-margin" value="10" min="0" max="50" step="1" oninput="executarOtimizacao(false)" class="w-full font-mono bg-amber-50 border border-amber-400 rounded-xl px-2.5 py-2 text-sm font-extrabold text-amber-950">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-700 mb-1">Pré-Fresador</label>
+                                <input type="number" id="opt-premiller" value="2" min="0" max="5" step="0.5" oninput="atualizarPreviewPeca(); recalcularTodasPecas();" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-sm font-extrabold text-slate-900">
+                            </div>
+                        </div>
+
+                        <label class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 cursor-pointer select-none">
+                            <input type="checkbox" id="opt-skip-thin-premiller" onchange="atualizarPreviewPeca(); recalcularTodasPecas();" class="mt-0.5 accent-blue-600 w-4 h-4">
+                            <span><strong>Desativar pré-fresador na orla fina (0,4 mm)</strong> <span class="text-slate-500">(desmarcado = compensa +1,6 mm/lado)</span></span>
+                        </label>
+                    </div>
+
+                    <div class="p-3 bg-slate-900 text-slate-200 rounded-xl text-[11px] leading-relaxed space-y-1">
+                        <p class="font-bold text-blue-400">Regras Ativas no Cálculo:</p>
+                        <p>&#8226; <strong>Limpeza Placa-Mãe:</strong> Tira <strong><span id="lbl-trim-info">10</span> mm</strong> nos 4 bordos antes de encaixar.</p>
+                        <p>&#8226; <strong>HPL Reta:</strong> +5 mm &nbsp;|&nbsp; <strong>HPL Redonda:</strong> <strong>+15 mm (+10 + 5 mm)</strong>.</p>
+                        <p>&#8226; <strong>Melamina / MDF / Linóleo:</strong> +0 mm (reta) &nbsp;|&nbsp; +10 mm (redonda).</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECÇÃO 3: ADICIONAR PEÇAS À LISTA -->
+            <div class="no-print bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-6 bg-blue-600 rounded-full inline-block"></span>
+                            3. Adicionar Peças à Lista (Entrada Contínua)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Adiciona todas as medidas e quantidades da encomenda (ex: 10x 1500&times;1000, 5x 500&times;250) para otimizar em conjunto.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="toggleModal('excel-modal', true)" class="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold shadow-xs cursor-pointer">
+                            &#128202; Colar do Excel
+                        </button>
+                        <button type="button" onclick="limparListaPecas()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 text-xs font-semibold cursor-pointer">
+                            Limpar Lista
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-12 gap-3 items-end" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarPeca();}">
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Comp. Final (mm)</label>
+                        <input type="number" id="piece-l" placeholder="Ex: 1500" min="1" oninput="atualizarPreviewPeca()" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold focus:outline-none focus:border-blue-600">
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Larg. Final (mm)</label>
+                        <input type="number" id="piece-w" placeholder="Ex: 1000" min="1" oninput="atualizarPreviewPeca()" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold focus:outline-none focus:border-blue-600">
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Qtd.</label>
+                        <input type="number" id="piece-qty" value="1" min="1" max="999" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-sm font-extrabold text-center focus:outline-none focus:border-blue-600">
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Formato</label>
+                        <select id="piece-shape" onchange="atualizarPreviewPeca()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-semibold focus:outline-none focus:border-blue-600">
+                            <option value="Reta">Reta</option>
+                            <option value="Redonda">Redonda / Cantos Redondos</option>
+                        </select>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Espessura da Orla</label>
+                        <select id="piece-edge-thick" onchange="aoMudarEspessuraOrla()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-semibold focus:outline-none focus:border-blue-600">
+                            <option value="0">Sem Orla</option>
+                            <option value="2">2 mm (Tampos)</option>
+                            <option value="1">1 mm (Portas/Alçados)</option>
+                            <option value="0.4">0,4 mm (Interiores)</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 lg:col-span-3">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Lados Orlados</label>
+                        <select id="piece-edge-sides" onchange="atualizarPreviewPeca()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs sm:text-sm font-semibold focus:outline-none focus:border-blue-600">
+                            <option value="nenhum">Nenhum</option>
+                            <option value="4lados">4 Lados (2C + 2L)</option>
+                            <option value="2comp1larg">2 Comprimentos + 1 Largura (2C + 1L)</option>
+                            <option value="1comp2larg">1 Comprimento + 2 Larguras (1C + 2L)</option>
+                            <option value="2comp">Só 2 Comprimentos (2C)</option>
+                            <option value="2larg">Só 2 Larguras (2L)</option>
+                            <option value="1comp1larg">1 Comprimento + 1 Largura (1C + 1L)</option>
+                            <option value="1comp">Só 1 Comprimento (1C)</option>
+                            <option value="1larg">Só 1 Largura (1L)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-slate-100" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarPeca();}">
+                    <div class="w-full md:w-64">
+                        <input type="text" id="piece-label" placeholder="Etiqueta / Nota (ex: Tampo, Porta)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-600">
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between md:justify-end gap-3 flex-1">
+                        <div class="bg-blue-50 border border-blue-300 rounded-xl px-3.5 py-2 text-xs">
+                            <span class="text-blue-900 font-semibold">Medida Real de Corte: </span>
+                            <strong id="preview-cut-dim" class="font-mono text-sm font-black text-blue-950">-- &times; -- mm</strong>
+                            <span id="preview-cut-note" class="block text-[10px] text-blue-800">Insere comprimento e largura para pré-visualizar</span>
+                        </div>
+
+                        <button type="button" onclick="adicionarPeca()" class="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs sm:text-sm font-extrabold shadow-sm cursor-pointer whitespace-nowrap">
+                            + Adicionar à Lista
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabela Acumulada de Peças -->
+                <div id="pieces-table-wrapper" class="hidden pt-2 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-100 px-3.5 py-2.5 rounded-xl border border-slate-200">
+                        <span id="pieces-summary-counter" class="text-xs sm:text-sm font-extrabold text-slate-900">
+                            Total: 0 peças em 0 medidas diferentes
+                        </span>
+                        <button type="button" onclick="executarOtimizacao(true)" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-blue-400 text-xs sm:text-sm font-extrabold shadow-xs cursor-pointer">
+                            &#9654; Otimizar Planos de Corte
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 uppercase text-[11px] border-y border-slate-200">
+                                    <th class="py-2.5 px-3">Etiqueta</th>
+                                    <th class="py-2.5 px-3">Medida Final</th>
+                                    <th class="py-2.5 px-3">Formato / Orla</th>
+                                    <th class="py-2.5 px-3">Folgas Aplicadas</th>
+                                    <th class="py-2.5 px-3 text-blue-950 bg-blue-50">Medida de Corte</th>
+                                    <th class="py-2.5 px-3 text-center">Qtd.</th>
+                                    <th class="py-2.5 px-3 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pieces-tbody" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECÇÃO 4: RESULTADOS DA OTIMIZAÇÃO, ORLAS & DIAGRAMAS -->
+            <div id="optimizer-results-section" class="space-y-5">
+
+                <!-- KPIs -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="bg-slate-900 text-white rounded-2xl p-4 border border-slate-800 shadow-xs">
+                        <span class="text-[11px] font-bold uppercase text-blue-400 block">N.º Placas-Mãe Inteiras</span>
+                        <span id="kpi-sheets" class="text-3xl font-black text-white font-mono mt-1 block">0</span>
+                        <span id="kpi-sheet-dim" class="text-[11px] text-slate-400">2850 &times; 2100 mm</span>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
+                        <span class="text-[11px] font-bold uppercase text-slate-400 block">Peças Encaixadas</span>
+                        <span id="kpi-pieces" class="text-2xl font-black text-slate-900 font-mono mt-1 block">0</span>
+                        <span id="kpi-grain-status" class="text-[11px] text-slate-500">Sem veio (rotação livre)</span>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
+                        <span class="text-[11px] font-bold uppercase text-slate-400 block">Aproveitamento / Sobra</span>
+                        <span id="kpi-yield" class="text-2xl font-black text-emerald-700 font-mono mt-1 block">0%</span>
+                        <span id="kpi-waste" class="text-[11px] text-slate-500">Desperdício: 0%</span>
+                    </div>
+                    <div class="bg-teal-950 text-teal-50 rounded-2xl p-4 border border-teal-800 shadow-xs">
+                        <span class="text-[11px] font-bold uppercase text-teal-300 block">Maior Retalho Aproveitável</span>
+                        <span id="kpi-best-remnant" class="text-lg sm:text-xl font-black text-white font-mono mt-1 block">-- &times; -- mm</span>
+                        <span id="kpi-best-remnant-sub" class="text-[11px] text-teal-300">Maximiza largura + comprimento</span>
+                    </div>
+                </div>
+
+                <!-- Resumo Automático de Orlas -->
+                <div id="auto-edge-summary-card" class="hidden bg-white rounded-2xl shadow-xs border border-slate-200 p-4 sm:p-5 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <h3 class="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-rose-600 rounded-full inline-block"></span>
+                            Cálculo Automático de Orlas desta Otimização
+                        </h3>
+                        <span class="text-[11px] text-slate-500">Fórmula aplicada: <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">(Comp. Orlado + Larg. Orlada + 200 mm folga) &times; Qtd</code></span>
+                    </div>
+                    <div id="auto-edge-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+                </div>
+
+                <!-- Legenda Visual Completa -->
+                <div id="visual-legend-bar" class="hidden bg-slate-900 text-slate-100 rounded-2xl p-4 border border-slate-700 shadow-xs space-y-2.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-blue-400">&#128269; Legenda do Plano de Corte & Placa-Mãe</span>
+                        <span class="text-[11px] text-slate-400">Peças compactadas num canto para deixar o maior retalho aproveitável possível</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-[11px]">
+                        <div class="flex items-center gap-2 bg-slate-800/90 p-2 rounded-lg border border-slate-700">
+                            <span class="w-4 h-4 bg-white border-2 border-black shrink-0 inline-block"></span>
+                            <span><strong>Placa-Mãe:</strong> Limite total (<span id="leg-sheet-size">2850&times;2100</span>)</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-800/90 p-2 rounded-lg border border-slate-700">
+                            <span class="w-4 h-4 bg-amber-100 border-2 border-dashed border-amber-500 shrink-0 inline-block"></span>
+                            <span><strong>Limpeza:</strong> Margem (<span id="leg-trim-size">10 mm</span>)</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-800/90 p-2 rounded-lg border border-slate-700">
+                            <span class="w-4 h-4 bg-sky-200 border-2 border-sky-700 shrink-0 inline-block"></span>
+                            <span><strong>Peças:</strong> Corte real + (Final)</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-800/90 p-2 rounded-lg border border-slate-700">
+                            <span class="w-4 h-1.5 bg-rose-600 shrink-0 inline-block"></span>
+                            <span><strong>Orla:</strong> Topos com fita de orla</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-800/90 p-2 rounded-lg border border-slate-700">
+                            <span class="w-4 h-4 bg-slate-600 shrink-0 inline-block"></span>
+                            <span><strong>Serra:</strong> Corte (<span id="leg-kerf-size">4 mm</span>)</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-800/90 p-2 rounded-lg border border-slate-700">
+                            <span class="w-4 h-4 bg-emerald-100 border-2 border-dashed border-emerald-600 shrink-0 inline-block"></span>
+                            <span><strong>Retalho Útil:</strong> Maior sobra p/ guardar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contentor dos Planos de Corte -->
+                <div id="sheets-visual-container" class="space-y-6">
+                    <div class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500 text-sm">
+                        Adiciona as medidas e quantidades acima (ou cola do Excel) para calcular o número de placas inteiras necessárias, o retalho aproveitável e os metros de orla.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SEPARADOR 2: MANUAL DE PROCEDIMENTOS COMPLETO (TODOS OS MANUSCRITOS) -->
+        <!-- ================================================================= -->
+        <div id="tab-producao" class="tab-panel hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+                <!-- 1. Materiais, Equivalências, Medidas e Encomendas -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-blue-600 rounded-full inline-block"></span>
+                            Materiais, Referências & Encomendas
+                        </h2>
+                    </div>
+                    <ul class="space-y-1.5 text-xs text-slate-700 leading-relaxed">
+                        <li>&#8226; <strong>Termolaminado / TERMOL:</strong> = HPL (folha fina).</li>
+                        <li>&#8226; <strong>Melamina:</strong> = Placas (19 / 25 / 30).</li>
+                        <li>&#8226; <strong>Desktop:</strong> = Linóleo.</li>
+                        <li>&#8226; <strong>Separador:</strong> = MDF Crú.</li>
+                        <li>&#8226; <strong>CF Preta:</strong> = <code class="font-mono font-bold bg-slate-100 px-1 rounded">L121</code>.</li>
+                        <li>&#8226; <strong>Ref. do Branco B4062:</strong> &rarr; Nova ref. <code class="font-mono font-bold bg-amber-100 text-amber-900 px-1 rounded">B111</code>.</li>
+                        <li>&#8226; <strong>Melaminas (norma):</strong> <code class="font-mono bg-slate-100 px-1 rounded">2850 &times; 2100</code> e <code class="font-mono bg-slate-100 px-1 rounded">2800 &times; 2070</code>.</li>
+                        <li>&#8226; <strong>HPL (medidas):</strong> <code class="font-mono bg-slate-100 px-1 rounded">3050&times;1300</code> / <code class="font-mono bg-slate-100 px-1 rounded">3070&times;1320</code> / <code class="font-mono bg-slate-100 px-1 rounded">3050&times;1320</code> / <code class="font-mono bg-slate-100 px-1 rounded">3050&times;1310</code>.</li>
+                        <li>&#8226; <strong>Veios:</strong> Regra geral é sempre no <strong>comprimento</strong> da peça.</li>
+                        <li class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-semibold">
+                            <strong>Encomendas:</strong> <code class="font-mono text-emerald-700">100....</code> = Normal &nbsp;|&nbsp; <code class="font-mono text-rose-700">600....</code> = Reclamação.
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- 2. Exequibilidades e Impressão de Listas -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-teal-600 rounded-full inline-block"></span>
+                            Exequibilidades & Impressão de Listas
+                        </h2>
+                    </div>
+                    <div class="space-y-2.5 text-xs text-slate-700 leading-relaxed">
+                        <div class="p-2.5 bg-teal-50/70 border border-teal-200 rounded-xl space-y-1">
+                            <p class="font-bold text-teal-950">Exemplo de Código: <code class="font-mono bg-white px-1.5 py-0.5 rounded border border-teal-300">H260100025</code></p>
+                            <p>&#8226; <strong>H:</strong> Conjunto (Mesa, Display, Armário)</p>
+                            <p>&#8226; <strong>26:</strong> Ano da encomenda (2026)</p>
+                            <p>&#8226; <strong>0100:</strong> Número (Pedido = <code class="font-mono font-bold">20260100</code>)</p>
+                            <p>&#8226; <strong>02:</strong> Linha (o que interessa está na 2.ª linha)</p>
+                        </div>
+                        <p><strong>Para ir a uma exequibilidade:</strong><br>
+                        Ir a <strong>Comercial / Exequibilidades / Pedido</strong> &rarr; Colocar Ano + Número (<code class="font-mono">20260100</code>) &rarr; Carregar na mãozinha (<strong>Select</strong>) &rarr; Procurar a linha (<strong>02</strong>) e carregar outra vez na mãozinha (<strong>Select</strong>) &rarr; Ver em <strong>Anexos</strong> no menu verde em cima (para ver se tem desenhos) &rarr; Carregar no símbolo <strong>PDF</strong>.</p>
+                        <div class="p-2.5 bg-slate-100 rounded-xl font-medium space-y-1">
+                            <p class="font-bold text-slate-900">Ordem de Impressão do Material (Lista):</p>
+                            <p>&#8226; <strong>E/R/T:</strong> É a 1.ª folha a imprimir</p>
+                            <p>&#8226; <strong>C:</strong> Componentes &nbsp;|&nbsp; <strong>SC:</strong> Subcomponentes</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Processo Semanal quanto aos Desenhos -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-orange-500 rounded-full inline-block"></span>
+                            Processo Semanal dos Desenhos
+                        </h2>
+                        <button type="button" onclick="limparChecks('chk-desenhos-card')" class="text-[11px] text-slate-500 hover:text-slate-800 underline cursor-pointer">Limpar</button>
+                    </div>
+                    <div class="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 font-semibold">
+                        &#9888; <strong>Cuidado:</strong> As folhas da semana passada que já têm desenho tirado, verificar (apontar) nas folhas da semana nova que já está tirado!
+                    </div>
+                    <div id="chk-desenhos-card" class="space-y-1.5 text-xs text-slate-700">
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>1.</strong> Copiar as pintas das folhas da semana anterior para a semana nova.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>2.</strong> Colorir: <span class="px-1.5 py-0.5 bg-orange-100 text-orange-900 rounded font-bold">Laranja = Iduna</span> | <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded font-bold">Verde = Fora</span>.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>3.</strong> Inserir dados no Sheets.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>4.</strong> Fazer impressão dos desenhos (e escrever neles).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>5.</strong> Colocar o ponto na lista semanal (em como foi impresso).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>6.</strong> Dar baixa no Sheets (como foi impresso).</span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- 4. Cálculo de Matérias-Primas (MaxCut) & Exceções -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-indigo-600 rounded-full inline-block"></span>
+                            Cálculo de Matérias-Primas (MaxCut)
+                        </h2>
+                    </div>
+                    <ol class="list-decimal list-inside space-y-1.5 text-xs text-slate-700 leading-relaxed">
+                        <li>Ordenar por acabamento (ex: Branco Polar 060).</li>
+                        <li>Conforme inserimos os dados, pôr visto na quantidade.</li>
+                        <li>Sublinhar a marcador as referências para ser + fácil visualizar.</li>
+                        <li>Calcular o material na app MaxCut, mas antes inserir os dados no <strong>Excel Exemplar</strong>.</li>
+                        <li><strong>Passos no MaxCut:</strong> Importação &rarr; Ficheiro Excel &rarr; Inserir Exemplar &rarr; Inserir Placa nos Materiais (medidas correspondentes <strong>COM e SEM VEIOS</strong>) &rarr; Carregar Optimizer.</li>
+                    </ol>
+                    <div class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-950 space-y-1">
+                        <p><strong>Exceções de Cálculo:</strong></p>
+                        <p>&#8226; <strong>Folheados e Lacados (individuais):</strong> Não é para calcular.</p>
+                        <p>&#8226; <strong>Folheado Cerejeira:</strong> Confirmar sempre se é para fazer fora ou cá.</p>
+                        <p>&#8226; <strong>Envernizado / Oleado (biselado):</strong> Sempre para acabar fora (só no preto).</p>
+                    </div>
+                </section>
+
+                <!-- 5. Procurar Referências & Fazer Requisições (Iduna / Sage) -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-emerald-600 rounded-full inline-block"></span>
+                            Pesquisa & Requisições (Iduna / Sage)
+                        </h2>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <p><strong>Procurar Ref. para requisitar/ver material:</strong><br>
+                        <code class="font-mono bg-slate-100 px-1 rounded">Iduna / Artigo / Estrutura Artigo / Descrição</code> &rarr; Usar <code class="font-mono font-bold">%</code> (ex: <code class="font-mono">ORLA%BRANCO</code>).</p>
+                        <div class="p-2 bg-rose-50 border border-rose-300 rounded-xl text-rose-950 font-semibold">
+                            <strong>Requisições antigas da Bela:</strong> Ir a <code class="font-mono">Iduna / Produção / Requisições Madeiras</code> &rarr; Fazer <kbd class="px-1.5 py-0.5 bg-white border rounded">Ctrl + F</kbd> e inserir ref. (ex: MDF). <strong>NUNCA fazer [+ Novo Registo]</strong> nas da Bela!
+                        </div>
+                        <p><strong>Fazer 1 Requisição Nova:</strong><br>
+                        1. <code class="font-mono bg-slate-100 px-1 rounded">Intranet / Iduna / Produção / Requisições Madeiras</code> &rarr; <code class="font-mono font-bold">+ Novo Registo</code> &rarr; <code class="font-mono font-bold">Insert</code> &rarr; Carregar em <strong>Sage</strong> e inserir ref. no Artigo &rarr; Verificar material, unidade, qtd, semana de entrega e encomenda &rarr; Repetir <code class="font-mono font-bold">Insert</code>.<br>
+                        2. Atualizar até aparecerem <strong>letras a vermelho</strong> e carregar na mãozinha verde (<strong>Select</strong>).<br>
+                        3. Ir a <strong>Dados de Requisição</strong> e carregar no <strong>Envelope</strong> até aparecer a data enviada.<br>
+                        4. Atualizar e confirmar se ficou a <strong>preto</strong> + confirmar e-mail de envio.<br>
+                        <em>Sem ref. aberta:</em> Não ir ao Sage; descrever tudo na zona Descrição (incluindo medida da placa/orla).</p>
+                    </div>
+                </section>
+
+                <!-- 6. Receção de Material, Baixa & Entregas Parciais -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-purple-600 rounded-full inline-block"></span>
+                            Receção de Material & Dar Baixa
+                        </h2>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <p>&#8226; Identificar, contabilizar e comparar com a fatura. <strong>Avisar a Beatriz</strong> caso tenha vindo menos material do que o faturado.</p>
+                        <p><strong>Passos para dar baixa:</strong><br>
+                        1. <code class="font-mono bg-slate-100 px-1 rounded">Produção / Requisição de Madeiras</code> &rarr; <kbd class="px-1 py-0.5 bg-slate-100 border rounded">Ctrl + F</kbd> e inserir ref. (ex: L3031, M9001, F861) em datas anteriores.<br>
+                        2. Carregar no <strong>Select</strong> &rarr; Verificar se Qtd está a 0 &rarr; Carregar no <strong>Select</strong> &rarr; Inserir Qtd, selecionar unidade (m², kg, lts) &rarr; <strong>Update</strong>.<br>
+                        3. Escrever na folha a <strong>vermelho</strong> se está feito, assinar a fatura e pôr a data.</p>
+                        <div class="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-950">
+                            <strong>Exemplo Entregas Parciais (100 pedidas, vieram 60):</strong> Dar baixa das 60 e fazer Update. Quando vierem as restantes 40, voltar ao pedido das 100, aumentar a quantidade e pôr no acabamento <code class="font-mono font-bold">"60+40"</code> para saber que veio em 2 entregas.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. Regras de Orlas & Pré-Fresador da Orladora -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-rose-600 rounded-full inline-block"></span>
+                            Orlas & Pré-Fresador da Orladora
+                        </h2>
+                    </div>
+                    <ul class="space-y-1.5 text-xs text-slate-700 leading-relaxed">
+                        <li>&#8226; <strong>Tampos:</strong> Quase sempre orla de <strong>2 mm</strong> (pré-fresador tira 2mm e repõe 2mm &rarr; +0 mm).</li>
+                        <li>&#8226; <strong>Portas / Alçados / Balcões:</strong> Normalmente orla de <strong>1 mm</strong> (pré-fresador tira 2mm e repõe 1mm &rarr; +1 mm/lado).</li>
+                        <li>&#8226; <strong>Interiores e Tampas:</strong> Orla de <strong>0,4 mm</strong> (+1,6 mm/lado se pré-fresador ativo).</li>
+                        <li>&#8226; <strong>Altura da Orla:</strong> Orla de 19 mm = <strong>23 mm</strong> (tem de ser sempre mais alta que o tampo).</li>
+                        <li class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium">
+                            <strong>Cálculo de Requisição:</strong> Multiplicar comp. e larg. &times; 2 + <strong>200 mm</strong> (50 mm cada lado). Inferior a 100 m &rarr; pedir sempre <strong>100 m</strong>.
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- 8. Stock Standard (Alerta abaixo de 50%) -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-amber-500 rounded-full inline-block"></span>
+                            Stock Standard (Pedir &lt; 50%)
+                        </h2>
+                    </div>
+                    <p class="text-[11px] text-slate-500 font-semibold">Pedir sempre que passar abaixo de 50% destas quantidades:</p>
+                    <ul class="space-y-1.5 text-xs text-slate-700">
+                        <li class="flex justify-between border-b border-slate-100 pb-1"><span>HPL B111:</span> <strong>100 placas</strong> <span class="text-amber-700">(pedir &lt; 50)</span></li>
+                        <li class="flex justify-between border-b border-slate-100 pb-1"><span>HPL Contraface:</span> <strong>150 placas</strong> <span class="text-amber-700">(pedir &lt; 75)</span></li>
+                        <li class="flex justify-between border-b border-slate-100 pb-1"><span>Aglomerado:</span> <strong>30 placas</strong> <span class="text-amber-700">(pedir &lt; 15)</span></li>
+                        <li class="flex justify-between border-b border-slate-100 pb-1"><span>Melamina Branco Polar:</span> <strong>30 placas</strong> <span class="text-amber-700">(pedir &lt; 15)</span></li>
+                        <li class="flex justify-between border-b border-slate-100 pb-1"><span>MDF Cru 16 mm:</span> <strong>20 / 25 placas</strong> <span class="text-amber-700">(pedir &lt; 12)</span></li>
+                        <li class="flex justify-between border-b border-slate-100 pb-1"><span>Orla Branco Polar 23*2:</span> <strong>600 mts</strong> <span class="text-amber-700">(pedir &lt; 300)</span></li>
+                        <li class="flex justify-between"><span>Cola Rakol 30 kg:</span> <strong>4 unds</strong> <span class="text-amber-700">(pedir &lt; 2)</span></li>
+                    </ul>
+                </section>
+
+                <!-- 9. Organização de Fábrica, Pilhas & Notas de Armazém -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-slate-800 rounded-full inline-block"></span>
+                            Organização de Fábrica, Pilhas & Notas
+                        </h2>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <p class="font-bold text-slate-900">Esquema de Identificação das Pilhas:</p>
+                            <p>&#8226; <strong>Pilha Superior (de cima):</strong> Cima = <strong>Material Acabado</strong> | Baixo = <strong>Material Maquinado (falta acabar)</strong>.</p>
+                            <p>&#8226; <strong>Pilha Inferior (de baixo):</strong> Cima = <strong>Parcialmente Maquinado</strong> | Baixo = <strong>Pronto a Maquinar</strong>.</p>
+                        </div>
+                        <p>&#8226; <strong>Retalhos:</strong> Muito retalho de MDF 25 Cru (medida: <code class="font-mono font-bold bg-slate-100 px-1 rounded">2850 &times; 797</code>).</p>
+                        <p>&#8226; <strong>Enc. 100704:</strong> (MDF) para o estufador (1 palete).</p>
+                        <p>&#8226; <strong>Estrado Enc. (CGD) 101201:</strong> Está tudo debaixo da esquadrejadora.</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SEPARADOR 3: PROCESSO DE CORTE NA MÁQUINA                         -->
+        <!-- ================================================================= -->
+        <div id="tab-maquina" class="tab-panel hidden space-y-6">
+
+            <div class="bg-rose-950 text-rose-50 rounded-2xl p-4 sm:p-5 border border-rose-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">&#9888;</span>
+                    <div>
+                        <h2 class="font-extrabold text-sm sm:text-base text-amber-300 uppercase tracking-wide">Regra Crítica do Incisor [4 Pontos]</h2>
+                        <p class="text-xs sm:text-sm text-rose-100 mt-0.5">
+                            <strong>Melamina:</strong> Apertar sempre nos <code class="bg-rose-900 px-1.5 py-0.5 rounded font-bold">[4 pontos]</code> e <strong>SELECIONAR Incisor</strong>. &nbsp;|&nbsp;
+                            <strong>HPL:</strong> <strong>NÃO selecionar / DESABILITAR Incisor</strong> se vier de corte de melamina!
+                        </p>
+                    </div>
+                </div>
+                <button type="button" onclick="limparChecks('tab-maquina')" class="self-start sm:self-center px-3 py-1.5 bg-rose-900 hover:bg-rose-800 text-rose-100 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer">Limpar vistos</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <!-- Etapa 1: Passos 1 a 8 -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <h3 class="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-slate-900 text-blue-400 flex items-center justify-center text-xs font-black">1</span>
+                        Ligar Máquina & Calibração (1–8)
+                    </h3>
+                    <div class="space-y-2 text-xs text-slate-700">
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>1.</strong> Ligar máquina na roda preta atrás da máquina.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>2.</strong> O botão azul vai estar aceso, clicar nele.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>3.</strong> Ligar no símbolo do raio (<strong>&#9889;</strong>).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>4.</strong> Ligar no <strong>Login</strong> (não tem credencial).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>5.</strong> Clicar na <strong>Mão</strong> (canto inferior direito).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>6.</strong> Calibrar nos 2 que têm calibração (clicar Play <code class="font-mono">[&gt;]</code> e apertar no verde).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>7.</strong> Sair da calibração <code class="font-mono">[X]</code>.</span>
+                        </label>
+                        <div class="p-2.5 bg-slate-100 rounded-xl font-semibold text-slate-900">
+                            <strong>8. Painel Principal (canto inf. esq.):</strong> Só usamos os <strong>2.º, 3.º e 9.º</strong> botões.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Etapa 2: Maestro Pattern & Folgas (9 a 15) -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <h3 class="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-slate-900 text-blue-400 flex items-center justify-center text-xs font-black">2</span>
+                        Maestro Pattern & Folgas (9–15)
+                    </h3>
+                    <div class="space-y-2 text-xs text-slate-700">
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>9–10.</strong> No <strong>Maestro Pattern</strong>, inserir medições da placa e peças. Na Qtd de placas inteiras meter <code class="font-mono font-bold bg-slate-100 px-1 rounded">-1</code> (infinito).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>11–13.</strong> Inserir espessura, qualquer número em <em>Nova Placa</em>, Comp. e Larg. da placa inteira &rarr; Inserir peças e veio (sentido do comp.) &rarr; Clicar na <strong>Otimização</strong>.</span>
+                        </label>
+                        <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-amber-950">
+                            <p><strong>Regras de Folgas:</strong></p>
+                            <p>&#8226; <strong>Peças redondas / cantos redondos:</strong> +1 cm (+10 mm). No HPL redondo: <strong>+10 mm + 5 mm</strong> (+15 mm).</p>
+                            <p>&#8226; <strong>Peças pequenas (tampas):</strong> Ver c/ o <strong>Nuno</strong> para dar + comp. para as ventosas agarrarem.</p>
+                            <p>&#8226; <strong>14–15 (HPL + Contraface):</strong> Inserir sempre a medida menor (contraface). Reto: +5 mm (+2 mm se orla 1 mm). Redondo: orlado na máq. do Nuno.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Etapa 3: Execução de Corte no HPL e Carga (16 a 21) -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <h3 class="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-slate-900 text-blue-400 flex items-center justify-center text-xs font-black">3</span>
+                        Execução HPL & Carga DX/SX (16–21)
+                    </h3>
+                    <div class="space-y-2 text-xs text-slate-700">
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>16. Layout:</strong> Ver no canto inf. esq. o layout das peças e o n.º de placas inteiras para pôr umas em cima das outras.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>17. Orientação Vertical HPL:</strong> Como para cortar é mais fácil na vertical, apertar <code class="font-mono">[V]</code> &rarr; <strong>Config. / Primeiro Corte</strong> &rarr; passar do Comp. para a Larg.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>18–19. Carga DX/SX:</strong> Carregar Play <code class="font-mono">[&gt;]</code>. No HPL escolher <strong>ESQ</strong>. Altura máx.: <code class="font-mono font-bold">60 mm</code> (~30 placas HPL / ~3 placas Melamina).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5 accent-blue-600">
+                            <span><strong>20–21.</strong> Clicar no Play <code class="font-mono">[&gt;]</code> azul do ecrã e no verde a piscar. Confirmar sempre se o <strong>Incisor</strong> está desabilitado nos <code class="font-mono">[4 pontos]</code> antes de cortar HPL!</span>
+                        </label>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- SEPARADOR 4: TO-DO LIST (TAREFAS DA FÁBRICA)                      -->
+        <!-- ================================================================= -->
+        <div id="tab-todo" class="tab-panel hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-6 bg-emerald-600 rounded-full inline-block"></span>
+                            Lista de Tarefas & Apontamentos Rápidos (To-Do List)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Aponta qualquer tarefa ou recado. A data e a hora ficam guardadas automaticamente no momento em que registas.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="todo-stats-badge" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
+                            0 por fazer &bull; 0 feitas
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Formulário de Nova Tarefa -->
+                <div class="flex flex-col sm:flex-row gap-2.5" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarTarefaTodo();}">
+                    <input
+                        type="text"
+                        id="todo-input"
+                        placeholder="Escreve aqui o que tens de fazer (ex: Pedir orla branco polar 23x2, falar c/ Nuno sobre tampas...)"
+                        class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                    >
+                    <button
+                        type="button"
+                        onclick="adicionarTarefaTodo()"
+                        class="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs sm:text-sm font-extrabold shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                        + Adicionar Tarefa
+                    </button>
+                </div>
+
+                <!-- Filtros -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="mudarFiltroTodo('todas')" id="todo-filter-todas" class="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Todas</button>
+                        <button type="button" onclick="mudarFiltroTodo('pendentes')" id="todo-filter-pendentes" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">Por Fazer</button>
+                        <button type="button" onclick="mudarFiltroTodo('feitas')" id="todo-filter-feitas" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">Feitas</button>
+                    </div>
+                    <span class="text-[11px] font-semibold text-slate-500">
+                        &#128274; Registo permanente (sem botão de apagar)
+                    </span>
+                </div>
+
+                <!-- Lista de Tarefas -->
+                <div id="todo-list-container" class="space-y-2.5 pt-2">
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 text-xs sm:text-sm">
+                        Ainda não tens tarefas apontadas. Escreve acima e carrega em <strong>+ Adicionar Tarefa</strong>.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- RODAPÉ -->
+    <footer class="no-print bg-white border-t border-slate-200 mt-10 py-4 px-4 sm:px-6 lg:px-8 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p>Manual Operacional & Otimizador de Cortes &bull; Uso interno da fábrica.</p>
+            <p>Acesso protegido por PIN.</p>
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        const PIN_CORRETO = "2017";
+        const STORAGE_KEY_CATALOG = "mc_catalogo_referencias_v1";
+        const STORAGE_KEY_SESSION = "mc_manual_unlocked_v1";
+        const STORAGE_KEY_TODOS = "mc_fabrica_todos_v1";
+        function verificarPin() {
+            const inputEl = document.getElementById("pin-input");
+            const errorEl = document.getElementById("pin-error");
+            const rememberEl = document.getElementById("remember-session");
+            const lockEl = document.getElementById("lock-screen");
+
+            if (!inputEl) return;
+            const valor = inputEl.value.trim();
+
+            if (valor === PIN_CORRETO) {
+                if (rememberEl && rememberEl.checked) {
+                    try {
+                        sessionStorage.setItem(STORAGE_KEY_SESSION, "true");
+                    } catch (e) {}
+                }
+                if (lockEl) lockEl.classList.add("hidden");
+                if (errorEl) errorEl.textContent = "";
+                inputEl.value = "";
+            } else {
+                if (errorEl) errorEl.textContent = "PIN incorreto. Tenta novamente.";
+                inputEl.value = "";
+                inputEl.focus();
+            }
+        }
+
+        function bloquearManual() {
+            try {
+                sessionStorage.removeItem(STORAGE_KEY_SESSION);
+            } catch (e) {}
+            const lockEl = document.getElementById("lock-screen");
+            const inputEl = document.getElementById("pin-input");
+            const errorEl = document.getElementById("pin-error");
+            if (errorEl) errorEl.textContent = "";
+            if (lockEl) lockEl.classList.remove("hidden");
+            if (inputEl) {
+                inputEl.value = "";
+                setTimeout(() => inputEl.focus(), 50);
+            }
+        }
+
+        function mostrarToast(mensagem) {
+            const box = document.getElementById("toast-box");
+            const msgEl = document.getElementById("toast-msg");
+            if (!box || !msgEl) return;
+            msgEl.textContent = mensagem;
+            box.classList.remove("hidden");
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                box.classList.add("hidden");
+            }, 3200);
+        }
+
+        function toggleModal(modalId, abrir) {
+            const el = document.getElementById(modalId);
+            if (!el) return;
+            if (abrir) {
+                el.classList.remove("hidden");
+            } else {
+                el.classList.add("hidden");
+            }
+        }
+
+        function mudarSeparador(tabId) {
+            document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+            const alvo = document.getElementById(tabId);
+            if (alvo) alvo.classList.remove("hidden");
+
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                if (btn.id === "btn-" + tabId) {
+                    btn.className = "tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-blue-600 text-white shadow-sm transition whitespace-nowrap cursor-pointer";
+                } else {
+                    btn.className = "tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap cursor-pointer";
+                }
+            });
+        }
+
+        function filtrarManual() {
+            const input = document.getElementById("search-input");
+            const clearBtn = document.getElementById("clear-search-btn");
+            const statusBanner = document.getElementById("search-status");
+            const termDisplay = document.getElementById("search-term-display");
+            const countDisplay = document.getElementById("search-count-display");
+
+            const termo = (input ? input.value : "").trim().toLowerCase();
+
+            if (!termo) {
+                if (clearBtn) clearBtn.classList.add("hidden");
+                if (statusBanner) statusBanner.classList.add("hidden");
+                document.querySelectorAll(".searchable-card").forEach(c => c.classList.remove("hidden"));
+                return;
+            }
+
+            if (clearBtn) clearBtn.classList.remove("hidden");
+            let total = 0;
+            document.querySelectorAll(".searchable-card").forEach(card => {
+                const texto = card.textContent.toLowerCase();
+                if (texto.includes(termo)) {
+                    card.classList.remove("hidden");
+                    total++;
+                } else {
+                    card.classList.add("hidden");
+                }
+            });
+
+            if (termDisplay) termDisplay.textContent = '"' + input.value.trim() + '"';
+            if (countDisplay) countDisplay.textContent = total;
+            if (statusBanner) statusBanner.classList.remove("hidden");
+
+            const tabOpt = document.getElementById("tab-otimizador");
+            if (tabOpt && !tabOpt.classList.contains("hidden") && total > 0) {
+                mudarSeparador("tab-producao");
+            }
+        }
+
+        function limparPesquisa() {
+            const input = document.getElementById("search-input");
+            if (input) input.value = "";
+            filtrarManual();
+        }
+
+        function limparChecks(containerId) {
+            const cont = document.getElementById(containerId);
+            if (!cont) return;
+            cont.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+
+        const CATALOGO_INICIAL = [
+            { code: "B111", desc: "HPL Branco (Substitui B4062)", material: "HPL", l: 3050, w: 1300, grain: "sem" },
+            { code: "060", desc: "Melamina Branco Polar", material: "Melamina", l: 2850, w: 2100, grain: "sem" },
+            { code: "L121", desc: "CF Preta (Contraface Preta)", material: "HPL", l: 3050, w: 1300, grain: "sem" },
+            { code: "MDF25", desc: "MDF Cru 25mm", material: "MDF", l: 2850, w: 2100, grain: "sem" },
+            { code: "LINOLEO", desc: "Desktop Linóleo", material: "Linoleo", l: 3050, w: 1300, grain: "sem" }
+        ];
+
+        let catalogoRefs = [];
+        let pecasLista = [];
+        let contadorIdPeca = 1;
+
+        function carregarCatalogo() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_CATALOG);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        catalogoRefs = parsed;
+                    } else {
+                        catalogoRefs = [...CATALOGO_INICIAL];
+                    }
+                } else {
+                    catalogoRefs = [...CATALOGO_INICIAL];
+                }
+            } catch (e) {
+                catalogoRefs = [...CATALOGO_INICIAL];
+            }
+            atualizarDatalistCatalogo();
+        }
+
+        function salvarCatalogoLocal() {
+            try {
+                localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
+            } catch (e) {}
+            atualizarDatalistCatalogo();
+        }
+
+        function atualizarDatalistCatalogo() {
+            const dl = document.getElementById("catalogo-datalist");
+            if (!dl) return;
+            dl.innerHTML = catalogoRefs.map(item =>
+                `<option value="${escapeHtml(item.code)}">${escapeHtml(item.desc)} (${item.material} ${item.l}×${item.w})</option>`
+            ).join("");
+        }
+
+        function aoEscreverReferencia() {
+            const codeEl = document.getElementById("opt-ref-code");
+            const delBtn = document.getElementById("btn-del-ref");
+            if (!codeEl) return;
+            const val = codeEl.value.trim().toUpperCase();
+            const encontrado = catalogoRefs.find(r => r.code.toUpperCase() === val);
+
+            if (encontrado) {
+                document.getElementById("opt-ref-desc").value = encontrado.desc || "";
+                document.getElementById("opt-mat-type").value = encontrado.material || "Melamina";
+                document.getElementById("opt-sheet-l").value = encontrado.l || 2850;
+                document.getElementById("opt-sheet-w").value = encontrado.w || 2100;
+                document.getElementById("opt-grain-select").value = encontrado.grain || "sem";
+                if (delBtn) delBtn.classList.remove("hidden");
+                aoMudarMaterial();
+            } else {
+                if (delBtn) delBtn.classList.add("hidden");
+            }
+        }
+
+        function guardarReferenciaCatalogo() {
+            const code = document.getElementById("opt-ref-code").value.trim().toUpperCase();
+            if (!code) {
+                mostrarToast("Escreve um código de referência antes de guardar.");
+                document.getElementById("opt-ref-code").focus();
+                return;
+            }
+            const desc = document.getElementById("opt-ref-desc").value.trim() || code;
+            const material = document.getElementById("opt-mat-type").value;
+            const l = parseFloat(document.getElementById("opt-sheet-l").value) || 2850;
+            const w = parseFloat(document.getElementById("opt-sheet-w").value) || 2100;
+            const grain = document.getElementById("opt-grain-select").value;
+
+            const idx = catalogoRefs.findIndex(r => r.code.toUpperCase() === code);
+            const novoItem = { code, desc, material, l, w, grain };
+
+            if (idx >= 0) {
+                catalogoRefs[idx] = novoItem;
+                mostrarToast(`Referência ${code} atualizada no catálogo!`);
+            } else {
+                catalogoRefs.push(novoItem);
+                mostrarToast(`Referência ${code} guardada no catálogo!`);
+            }
+
+            salvarCatalogoLocal();
+            document.getElementById("btn-del-ref").classList.remove("hidden");
+        }
+
+        function eliminarReferenciaCatalogo() {
+            const code = document.getElementById("opt-ref-code").value.trim().toUpperCase();
+            if (!code) return;
+            catalogoRefs = catalogoRefs.filter(r => r.code.toUpperCase() !== code);
+            salvarCatalogoLocal();
+            document.getElementById("btn-del-ref").classList.add("hidden");
+            mostrarToast(`Referência ${code} removida do catálogo.`);
+        }
+
+        function exportarCatalogo() {
+            const blob = new Blob([JSON.stringify(catalogoRefs, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "catalogo_referencias_fabrica.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            mostrarToast("Catálogo exportado (.json)!");
+        }
+
+        function importarCatalogo(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const dados = JSON.parse(e.target.result);
+                    if (Array.isArray(dados)) {
+                        catalogoRefs = dados;
+                        salvarCatalogoLocal();
+                        mostrarToast(`Catálogo importado (${dados.length} referências)!`);
+                    } else {
+                        mostrarToast("Ficheiro JSON inválido.");
+                    }
+                } catch (err) {
+                    mostrarToast("Erro ao ler ficheiro JSON.");
+                }
+                event.target.value = "";
+            };
+            reader.readAsText(file);
+        }
+
+        function aplicarMedidaChapa(l, w, mat) {
+            document.getElementById("opt-sheet-l").value = l;
+            document.getElementById("opt-sheet-w").value = w;
+            if (mat) {
+                document.getElementById("opt-mat-type").value = mat;
+                aoMudarMaterial();
+            } else {
+                executarOtimizacao(false);
+            }
+        }
+
+        function aoMudarMaterial() {
+            const mat = document.getElementById("opt-mat-type").value;
+            const banner = document.getElementById("opt-machine-banner");
+            const bannerText = document.getElementById("opt-machine-banner-text");
+
+            if (mat === "HPL") {
+                banner.className = "no-print rounded-2xl p-4 border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-950 text-rose-50 border-rose-800";
+                bannerText.innerHTML = `<strong>HPL (TERMOLAMINADO):</strong> <span class="text-amber-300 font-bold underline">DESLIGAR O INCISOR (&bull;&bull;)</span> e rodar corte para <strong>Vertical</strong>! Folgas ativas: <strong>+5 mm</strong> (reta) ou <strong>+15 mm (+10 + 5 mm)</strong> (redonda).`;
+            } else {
+                banner.className = "no-print rounded-2xl p-4 border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-950 text-emerald-50 border-emerald-800";
+                bannerText.innerHTML = `<strong>${mat.toUpperCase()}:</strong> Ligar sempre o <strong>Incisor (&bull;&bull;)</strong>! Folgas ativas: <strong>+0 mm</strong> (reta) ou <strong>+10 mm</strong> (redonda) + compensação do pré-fresador.`;
+            }
+
+            atualizarPreviewPeca();
+            recalcularTodasPecas();
+        }
+
+        function obterContagemLadosOrlados(edgeSides) {
+            switch (edgeSides) {
+                case "4lados": return { c: 2, l: 2 };
+                case "2comp1larg": return { c: 2, l: 1 };
+                case "1comp2larg": return { c: 1, l: 2 };
+                case "2comp": return { c: 2, l: 0 };
+                case "2larg": return { c: 0, l: 2 };
+                case "1comp1larg": return { c: 1, l: 1 };
+                case "1comp": return { c: 1, l: 0 };
+                case "1larg": return { c: 0, l: 1 };
+                default: return { c: 0, l: 0 };
+            }
+        }
+
+        function obterTextoLadosOrlados(edgeSides) {
+            switch (edgeSides) {
+                case "4lados": return "4 Lados (2C+2L)";
+                case "2comp1larg": return "2C + 1L";
+                case "1comp2larg": return "1C + 2L";
+                case "2comp": return "2 Comprimentos";
+                case "2larg": return "2 Larguras";
+                case "1comp1larg": return "1C + 1L";
+                case "1comp": return "1 Comprimento";
+                case "1larg": return "1 Largura";
+                default: return "Sem Orla";
+            }
+        }
+
+        function aoMudarEspessuraOrla() {
+            const thick = parseFloat(document.getElementById("piece-edge-thick").value) || 0;
+            const sidesEl = document.getElementById("piece-edge-sides");
+            if (thick > 0 && sidesEl.value === "nenhum") {
+                sidesEl.value = "4lados";
+            } else if (thick === 0) {
+                sidesEl.value = "nenhum";
+            }
+            atualizarPreviewPeca();
+        }
+
+        function calcularDimensaoCorte(finalL, finalW, shape, edgeThick, edgeSides) {
+            const mat = document.getElementById("opt-mat-type").value;
+            const premiller = parseFloat(document.getElementById("opt-premiller").value) || 0;
+            const skipThin = document.getElementById("opt-skip-thin-premiller").checked;
+
+            let folgaMatL = 0;
+            let folgaMatW = 0;
+            let notas = [];
+
+            if (mat === "HPL") {
+                if (shape === "Redonda") {
+                    folgaMatL += 15;
+                    folgaMatW += 15;
+                    notas.push("+15mm HPL Redondo (+10+5)");
+                } else {
+                    folgaMatL += 5;
+                    folgaMatW += 5;
+                    notas.push("+5mm HPL Reto");
+                }
+            } else {
+                if (shape === "Redonda") {
+                    folgaMatL += 10;
+                    folgaMatW += 10;
+                    notas.push("+10mm Redondo");
+                }
+            }
+
+            let compOrlaL = 0;
+            let compOrlaW = 0;
+            const contagem = obterContagemLadosOrlados(edgeSides);
+
+            if (edgeThick > 0 && (contagem.c > 0 || contagem.l > 0)) {
+                const aplicarPremiller = !(edgeThick <= 0.4 && skipThin);
+                if (aplicarPremiller && premiller > edgeThick) {
+                    const diffPorLado = Math.round((premiller - edgeThick) * 10) / 10;
+                    compOrlaL = Math.round((contagem.c * diffPorLado) * 10) / 10;
+                    compOrlaW = Math.round((contagem.l * diffPorLado) * 10) / 10;
+                    if (compOrlaL > 0 || compOrlaW > 0) {
+                        notas.push(`Orla ${edgeThick}mm: +${compOrlaL}C / +${compOrlaW}L`);
+                    }
+                } else {
+                    notas.push(`Orla ${edgeThick}mm (+0mm)`);
+                }
+            }
+
+            const cutL = Math.round((finalL + folgaMatL + compOrlaL) * 10) / 10;
+            const cutW = Math.round((finalW + folgaMatW + compOrlaW) * 10) / 10;
+
+            return {
+                cutL,
+                cutW,
+                edgeC: contagem.c,
+                edgeL: contagem.l,
+                notasTexto: notas.length > 0 ? notas.join(" | ") : "Medida exata (+0mm)"
+            };
+        }
+
+        function atualizarPreviewPeca() {
+            const finalL = parseFloat(document.getElementById("piece-l").value);
+            const finalW = parseFloat(document.getElementById("piece-w").value);
+            const shape = document.getElementById("piece-shape").value;
+            const edgeThick = parseFloat(document.getElementById("piece-edge-thick").value) || 0;
+            const edgeSides = document.getElementById("piece-edge-sides").value;
+
+            const dimEl = document.getElementById("preview-cut-dim");
+            const noteEl = document.getElementById("preview-cut-note");
+
+            if (!finalL || !finalW || finalL <= 0 || finalW <= 0) {
+                dimEl.textContent = "-- × -- mm";
+                noteEl.textContent = "Insere comprimento e largura para pré-visualizar";
+                return;
+            }
+
+            const res = calcularDimensaoCorte(finalL, finalW, shape, edgeThick, edgeSides);
+            dimEl.textContent = `${res.cutL} × ${res.cutW} mm`;
+            noteEl.textContent = res.notasTexto;
+        }
+
+        function adicionarPeca() {
+            const lEl = document.getElementById("piece-l");
+            const wEl = document.getElementById("piece-w");
+            const qtyEl = document.getElementById("piece-qty");
+            const labelEl = document.getElementById("piece-label");
+
+            const finalL = parseFloat(lEl.value);
+            const finalW = parseFloat(wEl.value);
+            const qty = parseInt(qtyEl.value, 10) || 1;
+            const shape = document.getElementById("piece-shape").value;
+            const edgeThick = parseFloat(document.getElementById("piece-edge-thick").value) || 0;
+            const edgeSides = edgeThick > 0 ? document.getElementById("piece-edge-sides").value : "nenhum";
+            const label = labelEl.value.trim() || `Peça ${contadorIdPeca}`;
+
+            if (!finalL || !finalW || finalL <= 0 || finalW <= 0) {
+                mostrarToast("Insere um comprimento e uma largura válidos.");
+                lEl.focus();
+                return;
+            }
+
+            const calc = calcularDimensaoCorte(finalL, finalW, shape, edgeThick, edgeSides);
+
+            pecasLista.push({
+                id: contadorIdPeca++,
+                label,
+                finalL,
+                finalW,
+                qty: Math.max(1, qty),
+                shape,
+                edgeThick,
+                edgeSides,
+                cutL: calc.cutL,
+                cutW: calc.cutW,
+                edgeC: calc.edgeC,
+                edgeL: calc.edgeL,
+                notasTexto: calc.notasTexto
+            });
+
+            lEl.value = "";
+            wEl.value = "";
+            qtyEl.value = "1";
+            labelEl.value = "";
+            atualizarPreviewPeca();
+            lEl.focus();
+
+            renderizarTabelaPecas();
+            executarOtimizacao(false);
+        }
+
+        function importarDoExcel() {
+            const area = document.getElementById("excel-paste-area");
+            const texto = (area.value || "").trim();
+            if (!texto) {
+                mostrarToast("Cola primeiro as linhas copiadas do Excel.");
+                return;
+            }
+
+            const shape = document.getElementById("piece-shape").value;
+            const edgeThick = parseFloat(document.getElementById("piece-edge-thick").value) || 0;
+            const edgeSides = edgeThick > 0 ? document.getElementById("piece-edge-sides").value : "nenhum";
+
+            const linhas = texto.split(/\r?\n/);
+            let adicionadas = 0;
+
+            linhas.forEach(linha => {
+                const cols = linha.split(/\t|;/).map(c => c.trim()).filter(c => c !== "");
+                if (cols.length >= 2) {
+                    const finalL = parseFloat(cols[0].replace(",", "."));
+                    const finalW = parseFloat(cols[1].replace(",", "."));
+                    const qty = cols[2] ? (parseInt(cols[2], 10) || 1) : 1;
+                    const label = cols[3] || `Peça ${contadorIdPeca}`;
+
+                    if (finalL > 0 && finalW > 0) {
+                        const calc = calcularDimensaoCorte(finalL, finalW, shape, edgeThick, edgeSides);
+                        pecasLista.push({
+                            id: contadorIdPeca++,
+                            label,
+                            finalL,
+                            finalW,
+                            qty: Math.max(1, qty),
+                            shape,
+                            edgeThick,
+                            edgeSides,
+                            cutL: calc.cutL,
+                            cutW: calc.cutW,
+                            edgeC: calc.edgeC,
+                            edgeL: calc.edgeL,
+                            notasTexto: calc.notasTexto
+                        });
+                        adicionadas++;
+                    }
+                }
+            });
+
+            if (adicionadas > 0) {
+                area.value = "";
+                toggleModal("excel-modal", false);
+                renderizarTabelaPecas();
+                executarOtimizacao(false);
+                mostrarToast(`${adicionadas} linha(s) importadas do Excel!`);
+            } else {
+                mostrarToast("Não foram detetadas medidas válidas.");
+            }
+        }
+
+        function recalcularTodasPecas() {
+            pecasLista = pecasLista.map(p => {
+                const calc = calcularDimensaoCorte(p.finalL, p.finalW, p.shape, p.edgeThick, p.edgeSides);
+                return {
+                    ...p,
+                    cutL: calc.cutL,
+                    cutW: calc.cutW,
+                    edgeC: calc.edgeC,
+                    edgeL: calc.edgeL,
+                    notasTexto: calc.notasTexto
+                };
+            });
+            renderizarTabelaPecas();
+            executarOtimizacao(false);
+        }
+
+        function alterarQuantidadePeca(id, novaQtd) {
+            const q = parseInt(novaQtd, 10);
+            if (!q || q < 1) return;
+            const item = pecasLista.find(p => p.id === id);
+            if (item) {
+                item.qty = q;
+                renderizarTabelaPecas();
+                executarOtimizacao(false);
+            }
+        }
+
+        function duplicarPeca(id) {
+            const item = pecasLista.find(p => p.id === id);
+            if (!item) return;
+            pecasLista.push({
+                ...item,
+                id: contadorIdPeca++,
+                label: item.label + " (Cópia)"
+            });
+            renderizarTabelaPecas();
+            executarOtimizacao(false);
+        }
+
+        function removerPeca(id) {
+            pecasLista = pecasLista.filter(p => p.id !== id);
+            renderizarTabelaPecas();
+            executarOtimizacao(false);
+        }
+
+        function limparListaPecas() {
+            pecasLista = [];
+            renderizarTabelaPecas();
+            executarOtimizacao(false);
+        }
+
+        function renderizarTabelaPecas() {
+            const wrapper = document.getElementById("pieces-table-wrapper");
+            const tbody = document.getElementById("pieces-tbody");
+            const counter = document.getElementById("pieces-summary-counter");
+
+            if (pecasLista.length === 0) {
+                wrapper.classList.add("hidden");
+                tbody.innerHTML = "";
+                return;
+            }
+
+            wrapper.classList.remove("hidden");
+            const totalUnidades = pecasLista.reduce((acc, p) => acc + p.qty, 0);
+            counter.textContent = `Total: ${totalUnidades} peça(s) em ${pecasLista.length} medida(s) diferente(s)`;
+
+            tbody.innerHTML = pecasLista.map(p => {
+                const orlaBadge = p.edgeThick > 0
+                    ? `<span class="inline-block px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-bold text-[10px]">Orla ${p.edgeThick}mm (${obterTextoLadosOrlados(p.edgeSides)})</span>`
+                    : `<span class="text-slate-400 text-[11px]">Sem orla</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-2.5 px-3 font-bold text-slate-900">${escapeHtml(p.label)}</td>
+                        <td class="py-2.5 px-3 font-mono text-slate-700">${p.finalL} &times; ${p.finalW} mm</td>
+                        <td class="py-2.5 px-3">
+                            <span class="font-semibold text-slate-800 block">${p.shape}</span>
+                            ${orlaBadge}
+                        </td>
+                        <td class="py-2.5 px-3 text-[11px] text-slate-600">${escapeHtml(p.notasTexto)}</td>
+                        <td class="py-2.5 px-3 font-mono font-black text-blue-950 bg-blue-50/70">${p.cutL} &times; ${p.cutW} mm</td>
+                        <td class="py-2.5 px-3 text-center">
+                            <input
+                                type="number"
+                                value="${p.qty}"
+                                min="1"
+                                max="999"
+                                onchange="alterarQuantidadePeca(${p.id}, this.value)"
+                                class="w-16 text-center font-mono font-extrabold bg-white border border-slate-300 rounded-lg py-1 px-1.5"
+                            >
+                        </td>
+                        <td class="py-2.5 px-3 text-right whitespace-nowrap space-x-1">
+                            <button type="button" onclick="duplicarPeca(${p.id})" title="Duplicar linha" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer">&#10697;</button>
+                            <button type="button" onclick="removerPeca(${p.id})" title="Remover peça" class="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold cursor-pointer">&#10005;</button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function pontuarRetalho(r) {
+            if (!r || r.w <= 0 || r.h <= 0) return 0;
+            const minDim = Math.min(r.w, r.h);
+            const area = r.w * r.h;
+            return (minDim * minDim * 2) + area;
+        }
+
+        function retanguloContem(a, b) {
+            return b.x >= a.x && b.y >= a.y && (b.x + b.w) <= (a.x + a.w) && (b.y + b.h) <= (a.y + a.h);
+        }
+
+        function normalizarRetangulosLivres(lista) {
+            const filtrados = lista.filter(r => r.w > 1 && r.h > 1);
+            let fundiu = true;
+            while (fundiu) {
+                fundiu = false;
+                for (let i = 0; i < filtrados.length; i++) {
+                    for (let j = i + 1; j < filtrados.length; j++) {
+                        const a = filtrados[i];
+                        const b = filtrados[j];
+                        if (Math.abs(a.y - b.y) < 0.01 && Math.abs(a.h - b.h) < 0.01) {
+                            if (Math.abs((a.x + a.w) - b.x) < 0.01) {
+                                a.w += b.w;
+                                filtrados.splice(j, 1);
+                                fundiu = true;
+                                break;
+                            }
+                            if (Math.abs((b.x + b.w) - a.x) < 0.01) {
+                                b.w += a.w;
+                                filtrados.splice(i, 1);
+                                fundiu = true;
+                                break;
+                            }
+                        }
+                        if (Math.abs(a.x - b.x) < 0.01 && Math.abs(a.w - b.w) < 0.01) {
+                            if (Math.abs((a.y + a.h) - b.y) < 0.01) {
+                                a.h += b.h;
+                                filtrados.splice(j, 1);
+                                fundiu = true;
+                                break;
+                            }
+                            if (Math.abs((b.y + b.h) - a.y) < 0.01) {
+                                b.h += a.h;
+                                filtrados.splice(i, 1);
+                                fundiu = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (fundiu) break;
+                }
+            }
+
+            const finais = [];
+            for (let i = 0; i < filtrados.length; i++) {
+                let contido = false;
+                for (let j = 0; j < filtrados.length; j++) {
+                    if (i !== j && retanguloContem(filtrados[j], filtrados[i])) {
+                        contido = true;
+                        break;
+                    }
+                }
+                if (!contido) finais.push(filtrados[i]);
+            }
+            return finais;
+        }
+
+        function dividirRetangulosLivres(freeRects, usado, kerf) {
+            const ux1 = usado.x;
+            const uy1 = usado.y;
+            const ux2 = usado.x + usado.w + kerf;
+            const uy2 = usado.y + usado.h + kerf;
+
+            const novos = [];
+            for (const r of freeRects) {
+                const rx1 = r.x;
+                const ry1 = r.y;
+                const rx2 = r.x + r.w;
+                const ry2 = r.y + r.h;
+
+                const intersecta = !(ux2 <= rx1 || ux1 >= rx2 || uy2 <= ry1 || uy1 >= ry2);
+                if (!intersecta) {
+                    novos.push(r);
+                    continue;
+                }
+
+                if (ux1 > rx1) {
+                    novos.push({ x: rx1, y: ry1, w: ux1 - rx1, h: r.h });
+                }
+                if (ux2 < rx2) {
+                    novos.push({ x: ux2, y: ry1, w: rx2 - ux2, h: r.h });
+                }
+                if (uy1 > ry1) {
+                    novos.push({ x: rx1, y: ry1, w: r.w, h: uy1 - ry1 });
+                }
+                if (uy2 < ry2) {
+                    novos.push({ x: rx1, y: uy2, w: r.w, h: ry2 - uy2 });
+                }
+            }
+            return normalizarRetangulosLivres(novos);
+        }
+
+        function simularEncaixeMaxRects(itensOrdenados, usableW, usableH, kerf, allowRotate, modoCompactacao) {
+            const placas = [];
+            const naoCouberam = [];
+
+            for (const item of itensOrdenados) {
+                const cabeNormal = item.w <= usableW && item.h <= usableH;
+                const cabeRodado = allowRotate && item.h <= usableW && item.w <= usableH;
+
+                if (!cabeNormal && !cabeRodado) {
+                    naoCouberam.push(item);
+                    continue;
+                }
+
+                let melhorEscolha = null;
+
+                for (let sIdx = 0; sIdx < placas.length; sIdx++) {
+                    const placa = placas[sIdx];
+                    for (const rect of placa.freeRects) {
+                        const orientacoes = [];
+                        if (item.w <= rect.w + 0.01 && item.h <= rect.h + 0.01) {
+                            orientacoes.push({ w: item.w, h: item.h, rotated: false });
+                        }
+                        if (allowRotate && Math.abs(item.w - item.h) > 0.01 && item.h <= rect.w + 0.01 && item.w <= rect.h + 0.01) {
+                            orientacoes.push({ w: item.h, h: item.w, rotated: true });
+                        }
+
+                        for (const ori of orientacoes) {
+                            let custo = 0;
+                            if (modoCompactacao === "top-left") {
+                                custo = (rect.y * 100000) + (rect.x * 100) + Math.min(rect.w - ori.w, rect.h - ori.h);
+                            } else if (modoCompactacao === "left-top") {
+                                custo = (rect.x * 100000) + (rect.y * 100) + Math.min(rect.w - ori.w, rect.h - ori.h);
+                            } else {
+                                const sobraCurta = Math.min(rect.w - ori.w, rect.h - ori.h);
+                                custo = (sobraCurta * 100000) + (rect.y * 100) + rect.x;
+                            }
+
+                            if (!melhorEscolha || custo < melhorEscolha.custo) {
+                                melhorEscolha = {
+                                    sIdx,
+                                    x: rect.x,
+                                    y: rect.y,
+                                    w: ori.w,
+                                    h: ori.h,
+                                    rotated: ori.rotated,
+                                    custo
+                                };
+                            }
+                        }
+                    }
+                }
+
+                if (!melhorEscolha) {
+                    const novaPlaca = {
+                        placed: [],
+                        freeRects: [{ x: 0, y: 0, w: usableW, h: usableH }]
+                    };
+                    let ori = { w: item.w, h: item.h, rotated: false };
+                    if (!cabeNormal && cabeRodado) {
+                        ori = { w: item.h, h: item.w, rotated: true };
+                    } else if (cabeNormal && cabeRodado && modoCompactacao === "left-top" && item.h < item.w) {
+                        ori = { w: item.h, h: item.w, rotated: true };
+                    }
+
+                    const colocada = {
+                        ...item,
+                        x: 0,
+                        y: 0,
+                        w: ori.w,
+                        h: ori.h,
+                        rotated: ori.rotated
+                    };
+                    novaPlaca.placed.push(colocada);
+                    novaPlaca.freeRects = dividirRetangulosLivres(novaPlaca.freeRects, colocada, kerf);
+                    placas.push(novaPlaca);
+                } else {
+                    const placaAlvo = placas[melhorEscolha.sIdx];
+                    const colocada = {
+                        ...item,
+                        x: melhorEscolha.x,
+                        y: melhorEscolha.y,
+                        w: melhorEscolha.w,
+                        h: melhorEscolha.h,
+                        rotated: melhorEscolha.rotated
+                    };
+                    placaAlvo.placed.push(colocada);
+                    placaAlvo.freeRects = dividirRetangulosLivres(placaAlvo.freeRects, colocada, kerf);
+                }
+            }
+
+            let scoreGlobalRetalhos = 0;
+            placas.forEach(p => {
+                const ordenados = [...p.freeRects].sort((a, b) => pontuarRetalho(b) - pontuarRetalho(a));
+                p.melhorRetalho = ordenados[0] || null;
+                p.retalhosSecundarios = ordenados.slice(1).filter(r => r.w >= 220 && r.h >= 220);
+                if (p.melhorRetalho) {
+                    scoreGlobalRetalhos += pontuarRetalho(p.melhorRetalho);
+                }
+            });
+
+            return { placas, naoCouberam, scoreGlobalRetalhos };
+        }
+
+        function executarOtimizacao(mostrarFeedback) {
+            const sheetL = parseFloat(document.getElementById("opt-sheet-l").value) || 2850;
+            const sheetW = parseFloat(document.getElementById("opt-sheet-w").value) || 2100;
+            const kerf = parseFloat(document.getElementById("opt-kerf").value) || 0;
+            const trimMargin = parseFloat(document.getElementById("opt-trim-margin").value) || 0;
+            const grain = document.getElementById("opt-grain-select").value;
+            const allowRotate = grain === "sem";
+
+            const trimInfoEl = document.getElementById("lbl-trim-info");
+            if (trimInfoEl) trimInfoEl.textContent = trimMargin;
+
+            const usableW = Math.max(10, sheetL - (2 * trimMargin));
+            const usableH = Math.max(10, sheetW - (2 * trimMargin));
+
+            document.getElementById("kpi-sheet-dim").textContent = `${sheetL} × ${sheetW} mm (Útil: ${usableW}×${usableH})`;
+            document.getElementById("kpi-grain-status").textContent = allowRotate ? "Sem veio (rotação 90° ativa)" : "Com veio (sentido fixo)";
+            document.getElementById("leg-sheet-size").textContent = `${sheetL}×${sheetW}`;
+            document.getElementById("leg-trim-size").textContent = `${trimMargin} mm`;
+            document.getElementById("leg-kerf-size").textContent = `${kerf} mm`;
+
+            atualizarResumoOrlasAutomatico();
+
+            const container = document.getElementById("sheets-visual-container");
+            const legendBar = document.getElementById("visual-legend-bar");
+
+            if (pecasLista.length === 0) {
+                document.getElementById("kpi-sheets").textContent = "0";
+                document.getElementById("kpi-pieces").textContent = "0";
+                document.getElementById("kpi-yield").textContent = "0%";
+                document.getElementById("kpi-waste").textContent = "Desperdício: 0%";
+                document.getElementById("kpi-best-remnant").textContent = "-- × -- mm";
+                document.getElementById("kpi-best-remnant-sub").textContent = "Maximiza largura + comprimento";
+                legendBar.classList.add("hidden");
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500 text-sm">
+                        Adiciona as medidas e quantidades acima (ou cola do Excel) para calcular o número de placas inteiras necessárias, o retalho aproveitável e os metros de orla.
+                    </div>
+                `;
+                return;
+            }
+
+            const itensExpandidos = [];
+            pecasLista.forEach((p, groupIdx) => {
+                for (let i = 0; i < p.qty; i++) {
+                    itensExpandidos.push({
+                        groupIdx,
+                        label: p.label,
+                        finalL: p.finalL,
+                        finalW: p.finalW,
+                        w: p.cutL,
+                        h: p.cutW,
+                        edgeThick: p.edgeThick,
+                        edgeSides: p.edgeSides
+                    });
+                }
+            });
+
+            const ordenacoes = [
+                [...itensExpandidos].sort((a, b) => (b.w * b.h) - (a.w * a.h)),
+                [...itensExpandidos].sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || (b.w * b.h) - (a.w * a.h)),
+                [...itensExpandidos].sort((a, b) => b.h - a.h || b.w - a.w),
+                [...itensExpandidos].sort((a, b) => b.w - a.w || b.h - a.h)
+            ];
+
+            const modos = ["top-left", "left-top", "best-short-side"];
+            let melhorResultado = null;
+
+            for (const ord of ordenacoes) {
+                for (const modo of modos) {
+                    const res = simularEncaixeMaxRects(ord, usableW, usableH, kerf, allowRotate, modo);
+                    if (!melhorResultado) {
+                        melhorResultado = res;
+                    } else if (res.naoCouberam.length < melhorResultado.naoCouberam.length) {
+                        melhorResultado = res;
+                    } else if (res.naoCouberam.length === melhorResultado.naoCouberam.length) {
+                        if (res.placas.length < melhorResultado.placas.length) {
+                            melhorResultado = res;
+                        } else if (res.placas.length === melhorResultado.placas.length && res.scoreGlobalRetalhos > melhorResultado.scoreGlobalRetalhos) {
+                            melhorResultado = res;
+                        }
+                    }
+                }
+            }
+
+            const { placas, naoCouberam } = melhorResultado;
+            const totalEncaixadas = itensExpandidos.length - naoCouberam.length;
+            const areaTotalPlacas = placas.length * (sheetL * sheetW);
+            const areaPecas = placas.reduce((acc, pl) => acc + pl.placed.reduce((s, pc) => s + (pc.w * pc.h), 0), 0);
+            const aproveitamento = areaTotalPlacas > 0 ? ((areaPecas / areaTotalPlacas) * 100) : 0;
+            const desperdicio = areaTotalPlacas > 0 ? (100 - aproveitamento) : 0;
+
+            let melhorRetalhoGlobal = null;
+            placas.forEach(pl => {
+                if (pl.melhorRetalho && (!melhorRetalhoGlobal || pontuarRetalho(pl.melhorRetalho) > pontuarRetalho(melhorRetalhoGlobal))) {
+                    melhorRetalhoGlobal = pl.melhorRetalho;
+                }
+            });
+
+            document.getElementById("kpi-sheets").textContent = placas.length;
+            document.getElementById("kpi-pieces").textContent = `${totalEncaixadas} / ${itensExpandidos.length}`;
+            document.getElementById("kpi-yield").textContent = `${aproveitamento.toFixed(1)}%`;
+            document.getElementById("kpi-waste").textContent = `Desperdício: ${desperdicio.toFixed(1)}%`;
+
+            if (melhorRetalhoGlobal && melhorRetalhoGlobal.w >= 50 && melhorRetalhoGlobal.h >= 50) {
+                const rC = Math.round(melhorRetalhoGlobal.w);
+                const rL = Math.round(melhorRetalhoGlobal.h);
+                document.getElementById("kpi-best-remnant").textContent = `${rC} × ${rL} mm`;
+                document.getElementById("kpi-best-remnant-sub").textContent = `Largura livre máx.: ${Math.min(rC, rL)} mm`;
+            } else {
+                document.getElementById("kpi-best-remnant").textContent = "Sem sobra útil";
+                document.getElementById("kpi-best-remnant-sub").textContent = "Chapa totalmente aproveitada";
+            }
+
+            legendBar.classList.remove("hidden");
+
+            let htmlAlertas = "";
+            if (naoCouberam.length > 0) {
+                htmlAlertas = `
+                    <div class="bg-rose-50 border-2 border-rose-400 text-rose-950 rounded-2xl p-4 text-xs sm:text-sm font-semibold">
+                        &#9888; <strong>Atenção:</strong> ${naoCouberam.length} peça(s) excedem a área útil da placa (${usableW} &times; ${usableH} mm pós-limpeza) e não foram encaixadas.
+                    </div>
+                `;
+            }
+
+            const coresPecas = [
+                { fill: "#e0f2fe", stroke: "#0369a1", text: "#0c4a6e" },
+                { fill: "#fef3c7", stroke: "#b45309", text: "#78350f" },
+                { fill: "#ede9fe", stroke: "#6d28d9", text: "#4c1d95" },
+                { fill: "#fce7f3", stroke: "#be185d", text: "#831843" },
+                { fill: "#dcfce7", stroke: "#15803d", text: "#14532d" },
+                { fill: "#ffedd5", stroke: "#c2410c", text: "#7c2d12" }
+            ];
+
+            const htmlPlacas = placas.map((pl, idx) => {
+                const areaUtilizadaPlaca = pl.placed.reduce((s, pc) => s + (pc.w * pc.h), 0);
+                const pctPlaca = ((areaUtilizadaPlaca / (sheetL * sheetW)) * 100).toFixed(1);
+                const ret = pl.melhorRetalho;
+                const temRetalhoUtil = ret && ret.w >= 100 && ret.h >= 100;
+                const retTexto = temRetalhoUtil
+                    ? `${Math.round(ret.w)} × ${Math.round(ret.h)} mm (Largura útil: ${Math.round(Math.min(ret.w, ret.h))} mm)`
+                    : "Sem retalho relevante";
+
+                const svgPecas = pl.placed.map(pc => {
+                    const cor = coresPecas[pc.groupIdx % coresPecas.length];
+                    const px = trimMargin + pc.x;
+                    const py = trimMargin + pc.y;
+                    const pw = pc.w;
+                    const ph = pc.h;
+
+                    const lados = obterContagemLadosOrlados(pc.edgeSides);
+                    let orlaTop = false, orlaBottom = false, orlaLeft = false, orlaRight = false;
+                    if (pc.edgeThick > 0) {
+                        if (!pc.rotated) {
+                            if (lados.c >= 1) orlaTop = true;
+                            if (lados.c >= 2) orlaBottom = true;
+                            if (lados.l >= 1) orlaLeft = true;
+                            if (lados.l >= 2) orlaRight = true;
+                        } else {
+                            if (lados.l >= 1) orlaTop = true;
+                            if (lados.l >= 2) orlaBottom = true;
+                            if (lados.c >= 1) orlaLeft = true;
+                            if (lados.c >= 2) orlaRight = true;
+                        }
+                    }
+
+                    const swOrla = Math.max(4, Math.min(sheetL, sheetW) * 0.004);
+                    let linhasOrla = "";
+                    if (orlaTop) linhasOrla += `<line x1="${px}" y1="${py + swOrla/2}" x2="${px + pw}" y2="${py + swOrla/2}" stroke="#e11d48" stroke-width="${swOrla}" />`;
+                    if (orlaBottom) linhasOrla += `<line x1="${px}" y1="${py + ph - swOrla/2}" x2="${px + pw}" y2="${py + ph - swOrla/2}" stroke="#e11d48" stroke-width="${swOrla}" />`;
+                    if (orlaLeft) linhasOrla += `<line x1="${px + swOrla/2}" y1="${py}" x2="${px + swOrla/2}" y2="${py + ph}" stroke="#e11d48" stroke-width="${swOrla}" />`;
+                    if (orlaRight) linhasOrla += `<line x1="${px + pw - swOrla/2}" y1="${py}" x2="${px + pw - swOrla/2}" y2="${py + ph}" stroke="#e11d48" stroke-width="${swOrla}" />`;
+
+                    const minLado = Math.min(pw, ph);
+                    const fontMain = Math.max(16, Math.min(36, minLado * 0.14));
+                    const fontSub = Math.max(12, Math.min(24, minLado * 0.095));
+                    const cx = px + pw / 2;
+                    const cy = py + ph / 2;
+                    const rotIcon = pc.rotated ? " ↻" : "";
+
+                    const mostraTexto = pw >= 110 && ph >= 75;
+                    const textoSvg = mostraTexto ? `
+                        <text x="${cx}" y="${cy - fontSub * 0.35}" text-anchor="middle" dominant-baseline="middle" fill="${cor.text}" font-family="Inter, sans-serif" font-weight="800" font-size="${fontMain}">
+                            ${pc.w} × ${pc.h}
+                        </text>
+                        <text x="${cx}" y="${cy + fontMain * 0.75}" text-anchor="middle" dominant-baseline="middle" fill="${cor.text}" font-family="Inter, sans-serif" font-weight="600" font-size="${fontSub}">
+                            ${escapeHtml(pc.label)} (Final: ${pc.finalL}×${pc.finalW})${rotIcon}
+                        </text>
+                    ` : "";
+
+                    return `
+                        <g>
+                            <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${cor.fill}" stroke="${cor.stroke}" stroke-width="2" />
+                            ${linhasOrla}
+                            ${textoSvg}
+                        </g>
+                    `;
+                }).join("");
+
+                let svgRetalhos = "";
+                if (temRetalhoUtil) {
+                    const rx = trimMargin + ret.x;
+                    const ry = trimMargin + ret.y;
+                    const rw = ret.w;
+                    const rh = ret.h;
+                    const rcx = rx + rw / 2;
+                    const rcy = ry + rh / 2;
+                    const verticalText = rh > rw * 1.45 && rw < 550;
+                    const dimMaior = verticalText ? rh : rw;
+                    const dimMenor = verticalText ? rw : rh;
+                    const fRetMain = Math.max(15, Math.min(32, Math.min(dimMaior * 0.055, dimMenor * 0.13)));
+                    const fRetSub = Math.max(12, Math.min(22, fRetMain * 0.72));
+                    const transformAttr = verticalText ? ` transform="rotate(-90 ${rcx} ${rcy})"` : "";
+
+                    svgRetalhos += `
+                        <g>
+                            <rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" fill="#ecfdf5" stroke="#059669" stroke-width="3" stroke-dasharray="14,8" />
+                            <g${transformAttr}>
+                                <text x="${rcx}" y="${rcy - fRetSub * 0.5}" text-anchor="middle" dominant-baseline="middle" fill="#065f46" font-family="Inter, sans-serif" font-weight="900" font-size="${fRetMain}">
+                                    RETALHO ÚTIL: ${Math.round(rw)} × ${Math.round(rh)}
+                                </text>
+                                <text x="${rcx}" y="${rcy + fRetMain * 0.75}" text-anchor="middle" dominant-baseline="middle" fill="#047857" font-family="Inter, sans-serif" font-weight="700" font-size="${fRetSub}">
+                                    Largura livre: ${Math.round(Math.min(rw, rh))} mm (guardar)
+                                </text>
+                            </g>
+                        </g>
+                    `;
+                }
+
+                if (pl.retalhosSecundarios && pl.retalhosSecundarios.length > 0) {
+                    pl.retalhosSecundarios.forEach(sec => {
+                        const sx = trimMargin + sec.x;
+                        const sy = trimMargin + sec.y;
+                        const sw = sec.w;
+                        const sh = sec.h;
+                        const scx = sx + sw / 2;
+                        const scy = sy + sh / 2;
+                        const fSec = Math.max(13, Math.min(24, Math.min(sw * 0.06, sh * 0.14)));
+                        svgRetalhos += `
+                            <g>
+                                <rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" fill="#f0fdf4" stroke="#10b981" stroke-width="2" stroke-dasharray="10,6" />
+                                <text x="${scx}" y="${scy}" text-anchor="middle" dominant-baseline="middle" fill="#047857" font-family="Inter, sans-serif" font-weight="800" font-size="${fSec}">
+                                    Sobra 2: ${Math.round(sw)} × ${Math.round(sh)} mm
+                                </text>
+                            </g>
+                        `;
+                    });
+                }
+
+                const padTop = 75;
+                const padBottom = 65;
+                const padSide = 45;
+                const vbW = sheetL + (padSide * 2);
+                const vbH = sheetW + padTop + padBottom;
+
+                return `
+                    <div class="sheet-card bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden">
+                        <div class="bg-slate-100 px-4 sm:px-5 py-3 border-b border-slate-300 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="px-3 py-1 rounded-lg bg-slate-900 text-white font-mono font-black text-xs sm:text-sm">PLACA #${idx + 1}</span>
+                                <span class="text-xs sm:text-sm font-extrabold text-slate-800">${pl.placed.length} peça(s) &bull; Aproveitamento: <span class="text-emerald-700">${pctPlaca}%</span></span>
+                            </div>
+                            <div class="text-xs font-bold text-teal-900 bg-teal-50 border border-teal-300 px-3 py-1 rounded-lg">
+                                &#9986; Maior Retalho: <span class="font-mono">${retTexto}</span>
+                            </div>
+                        </div>
+
+                        <div class="svg-backdrop bg-slate-800 p-3 sm:p-5">
+                            <svg viewBox="${-padSide} ${-padTop} ${vbW} ${vbH}" class="w-full h-auto max-h-[540px] mx-auto block select-none">
+                                <text x="0" y="-32" fill="#f8fafc" font-family="Inter, sans-serif" font-weight="800" font-size="26">
+                                    PLACA-MÃE TOTAL: ${sheetL} × ${sheetW} mm
+                                </text>
+                                <text x="${sheetL}" y="-32" text-anchor="end" fill="#fbbf24" font-family="Inter, sans-serif" font-weight="800" font-size="24">
+                                    ÁREA ÚTIL (PÓS-LIMPEZA ${trimMargin}MM): ${usableW} × ${usableH} mm
+                                </text>
+
+                                <rect x="0" y="0" width="${sheetL}" height="${sheetW}" fill="#ffffff" stroke="#000000" stroke-width="8" />
+
+                                ${trimMargin > 0 ? `
+                                    <rect x="${trimMargin}" y="${trimMargin}" width="${usableW}" height="${usableH}" fill="#fffbeb" fill-opacity="0.35" stroke="#d97706" stroke-width="3" stroke-dasharray="14,8" />
+                                ` : ""}
+
+                                ${svgRetalhos}
+                                ${svgPecas}
+
+                                <text x="0" y="${sheetW + 38}" fill="#fda4af" font-family="Inter, sans-serif" font-weight="700" font-size="22">
+                                    &#9644; Traço vermelho = Topo orlado &nbsp;&nbsp;|&nbsp;&nbsp; &#9634; Borda amarela = Limpeza (${trimMargin} mm)
+                                </text>
+                                <text x="${sheetL}" y="${sheetW + 38}" text-anchor="end" fill="#e2e8f0" font-family="Inter, sans-serif" font-weight="700" font-size="22">
+                                    ${pl.placed.length} peça(s) | Serra: ${kerf} mm
+                                </text>
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            container.innerHTML = htmlAlertas + htmlPlacas;
+
+            if (mostrarFeedback) {
+                mostrarToast(`Otimização concluída: ${placas.length} placa(s) necessária(s)!`);
+            }
+        }
+
+        function atualizarResumoOrlasAutomatico() {
+            const card = document.getElementById("auto-edge-summary-card");
+            const grid = document.getElementById("auto-edge-grid");
+
+            const totaisPorEspessura = {};
+
+            pecasLista.forEach(p => {
+                if (p.edgeThick > 0 && (p.edgeC > 0 || p.edgeL > 0)) {
+                    const key = String(p.edgeThick);
+                    if (!totaisPorEspessura[key]) {
+                        totaisPorEspessura[key] = {
+                            espessura: p.edgeThick,
+                            metrosExatos: 0,
+                            pecasOrladas: 0
+                        };
+                    }
+                    const perimetroOrladoMm = (p.edgeC * p.finalL) + (p.edgeL * p.finalW) + 200;
+                    totaisPorEspessura[key].metrosExatos += (perimetroOrladoMm / 1000) * p.qty;
+                    totaisPorEspessura[key].pecasOrladas += p.qty;
+                }
+            });
+
+            const chaves = Object.keys(totaisPorEspessura).sort((a, b) => parseFloat(b) - parseFloat(a));
+            if (chaves.length === 0) {
+                card.classList.add("hidden");
+                grid.innerHTML = "";
+                return;
+            }
+
+            card.classList.remove("hidden");
+            grid.innerHTML = chaves.map(k => {
+                const item = totaisPorEspessura[k];
+                const exato = item.metrosExatos;
+                const aEncomendar = exato < 100 ? 100 : Math.ceil(exato);
+                const notaMinimo = exato < 100
+                    ? `<span class="text-amber-700 font-bold">Mínimo obrigatório: 100 m</span>`
+                    : `<span class="text-emerald-700 font-bold">Encomendar: ${aEncomendar} m</span>`;
+
+                return `
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 rounded bg-rose-600 text-white font-extrabold text-xs">Orla ${item.espessura} mm</span>
+                            <span class="text-[11px] text-slate-500">${item.pecasOrladas} peça(s)</span>
+                        </div>
+                        <div class="pt-1 flex items-baseline justify-between">
+                            <span class="text-xs text-slate-600">Total c/ folga:</span>
+                            <span class="font-mono font-black text-base text-slate-900">${exato.toFixed(2)} m</span>
+                        </div>
+                        <div class="text-[11px] pt-1 border-t border-slate-200 flex justify-between">
+                            <span>Pedido:</span>
+                            ${notaMinimo}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        let todosLista = [];
+        let filtroTodoAtual = "todas";
+
+        function carregarTodos() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_TODOS);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        todosLista = parsed;
+                    }
+                }
+            } catch (e) {
+                todosLista = [];
+            }
+            renderizarTodos();
+        }
+
+        function salvarTodos() {
+            try {
+                localStorage.setItem(STORAGE_KEY_TODOS, JSON.stringify(todosLista));
+            } catch (e) {}
+            renderizarTodos();
+        }
+
+        function formatarDataHoraAtual() {
+            const agora = new Date();
+            const dia = String(agora.getDate()).padStart(2, "0");
+            const mes = String(agora.getMonth() + 1).padStart(2, "0");
+            const ano = agora.getFullYear();
+            const hora = String(agora.getHours()).padStart(2, "0");
+            const min = String(agora.getMinutes()).padStart(2, "0");
+            return `${dia}/${mes}/${ano} às ${hora}:${min}`;
+        }
+
+        function adicionarTarefaTodo() {
+            const input = document.getElementById("todo-input");
+            if (!input) return;
+            const texto = input.value.trim();
+            if (!texto) {
+                mostrarToast("Escreve primeiro o texto da tarefa.");
+                input.focus();
+                return;
+            }
+
+            todosLista.unshift({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                texto,
+                criadoEm: formatarDataHoraAtual(),
+                feito: false,
+                feitoEm: null,
+                notas: []
+            });
+
+            input.value = "";
+            input.focus();
+            salvarTodos();
+            mostrarToast("Tarefa apontada!");
+        }
+
+        function adicionarNotaNaTarefa(id) {
+            const input = document.getElementById("todo-note-input-" + id);
+            if (!input) return;
+            const textoNota = input.value.trim();
+            if (!textoNota) {
+                mostrarToast("Escreve primeiro uma atualização na nota.");
+                input.focus();
+                return;
+            }
+
+            const item = todosLista.find(t => t.id === id);
+            if (!item) return;
+            if (!Array.isArray(item.notas)) {
+                item.notas = [];
+            }
+
+            item.notas.push({
+                texto: textoNota,
+                dataHora: formatarDataHoraAtual()
+            });
+
+            salvarTodos();
+            mostrarToast("Atualização gravada na nota!");
+        }
+
+        function alternarEstadoTodo(id) {
+            const item = todosLista.find(t => t.id === id);
+            if (!item) return;
+            item.feito = !item.feito;
+            item.feitoEm = item.feito ? formatarDataHoraAtual() : null;
+            salvarTodos();
+        }
+
+        function mudarFiltroTodo(filtro) {
+            filtroTodoAtual = filtro;
+            ["todas", "pendentes", "feitas"].forEach(f => {
+                const btn = document.getElementById("todo-filter-" + f);
+                if (!btn) return;
+                if (f === filtro) {
+                    btn.className = "px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer";
+                }
+            });
+            renderizarTodos();
+        }
+
+        function renderizarTodos() {
+            const container = document.getElementById("todo-list-container");
+            const statsBadge = document.getElementById("todo-stats-badge");
+            const navBadge = document.getElementById("todo-nav-badge");
+            if (!container) return;
+
+            const pendentes = todosLista.filter(t => !t.feito).length;
+            const feitas = todosLista.filter(t => t.feito).length;
+
+            if (statsBadge) {
+                statsBadge.textContent = `${pendentes} por fazer • ${feitas} feita(s)`;
+            }
+            if (navBadge) {
+                if (pendentes > 0) {
+                    navBadge.textContent = pendentes;
+                    navBadge.classList.remove("hidden");
+                } else {
+                    navBadge.classList.add("hidden");
+                }
+            }
+
+            const filtradas = todosLista.filter(t => {
+                if (filtroTodoAtual === "pendentes") return !t.feito;
+                if (filtroTodoAtual === "feitas") return t.feito;
+                return true;
+            });
+
+            if (filtradas.length === 0) {
+                const msgVazio = todosLista.length === 0
+                    ? 'Ainda não tens tarefas apontadas. Escreve acima e carrega em <strong>+ Adicionar Tarefa</strong>.'
+                    : 'Nenhuma tarefa encontrada neste filtro.';
+                container.innerHTML = `
+                    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 text-xs sm:text-sm">
+                        ${msgVazio}
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtradas.map(t => {
+                const cardClass = t.feito
+                    ? "bg-emerald-50/70 border-emerald-200"
+                    : "bg-white border-slate-300 hover:border-blue-400";
+                const textClass = t.feito
+                    ? "line-through text-slate-600 font-semibold"
+                    : "text-slate-900 font-extrabold";
+                const statusBadge = t.feito
+                    ? `<span class="px-3 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-extrabold uppercase tracking-wide">Feito</span>`
+                    : `<span class="px-3 py-1 rounded-lg bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-extrabold uppercase tracking-wide">Por Fazer</span>`;
+                const infoConclusao = t.feito && t.feitoEm
+                    ? ` &nbsp;|&nbsp; <span class="text-emerald-800 font-semibold">Concluído em: ${escapeHtml(t.feitoEm)}</span>`
+                    : "";
+
+                const notas = Array.isArray(t.notas) ? t.notas : [];
+                const historicoHtml = notas.length > 0 ? `
+                    <div class="ml-7 pl-3 border-l-2 border-blue-300 space-y-1.5 pt-1">
+                        ${notas.map(n => `
+                            <div class="bg-slate-50/90 border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                                <p class="text-slate-800 font-medium">${escapeHtml(n.texto)}</p>
+                                <p class="text-[10px] text-slate-500 mt-0.5">&#8627; Registado em: <strong>${escapeHtml(n.dataHora)}</strong></p>
+                            </div>
+                        `).join("")}
+                    </div>
+                ` : "";
+
+                return `
+                    <div class="p-3.5 sm:p-4 rounded-xl border ${cardClass} transition space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            <label class="flex items-start gap-3 cursor-pointer flex-1 select-none">
+                                <input
+                                    type="checkbox"
+                                    ${t.feito ? "checked" : ""}
+                                    onchange="alternarEstadoTodo(${t.id})"
+                                    class="mt-0.5 w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                >
+                                <div class="space-y-1">
+                                    <p class="text-xs sm:text-sm ${textClass} leading-snug">${escapeHtml(t.texto)}</p>
+                                    <p class="text-[11px] text-slate-500">
+                                        &#128337; Criado em: <strong class="text-slate-700">${escapeHtml(t.criadoEm)}</strong>${infoConclusao}
+                                    </p>
+                                </div>
+                            </label>
+                            <div class="flex items-center justify-end shrink-0">
+                                <button
+                                    type="button"
+                                    onclick="alternarEstadoTodo(${t.id})"
+                                    class="cursor-pointer"
+                                    title="Clicar para alternar entre Por Fazer e Feito"
+                                >
+                                    ${statusBadge}
+                                </button>
+                            </div>
+                        </div>
+
+                        ${historicoHtml}
+
+                        <div class="ml-7 flex flex-col sm:flex-row gap-2 pt-1" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarNotaNaTarefa(${t.id});}">
+                            <input
+                                type="text"
+                                id="todo-note-input-${t.id}"
+                                placeholder="Escrever resposta ou atualização nesta nota (ex: Ela disse que vem hoje)..."
+                                class="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                            >
+                            <button
+                                type="button"
+                                onclick="adicionarNotaNaTarefa(${t.id})"
+                                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold cursor-pointer whitespace-nowrap"
+                            >
+                                + Gravar na Nota
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        window.addEventListener("DOMContentLoaded", function() {
+            const pinInput = document.getElementById("pin-input");
+            if (pinInput) {
+                pinInput.addEventListener("keydown", function(e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        verificarPin();
+                    }
+                });
+                setTimeout(() => pinInput.focus(), 50);
+            }
+
+            try {
+                if (sessionStorage.getItem(STORAGE_KEY_SESSION) === "true") {
+                    const lockEl = document.getElementById("lock-screen");
+                    if (lockEl) lockEl.classList.add("hidden");
+                }
+            } catch (e) {}
+
+            carregarCatalogo();
+            carregarTodos();
+            aoMudarMaterial();
+            atualizarPreviewPeca();
+            executarOtimizacao(false);
+        });
+    </script>
+</body>
+</html>
