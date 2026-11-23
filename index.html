@@ -1116,7 +1116,7 @@
                     const catSnap = await getDoc(catDoc);
                     if (catSnap.exists() && catSnap.data().itensJson) {
                         const lista = JSON.parse(catSnap.data().itensJson);
-                        if (Array.isArray(lista) && lista.length > 0 && typeof window.aplicarCatalogoDaNuvem === "function") {
+                        if (Array.isArray(lista) && typeof window.aplicarCatalogoDaNuvem === "function") {
                             window.aplicarCatalogoDaNuvem(lista);
                         }
                     }
@@ -1189,7 +1189,7 @@
                         if (d.itensJson && typeof window.aplicarCatalogoDaNuvem === "function") {
                             try {
                                 const lista = JSON.parse(d.itensJson);
-                                if (Array.isArray(lista) && lista.length > 0) {
+                                if (Array.isArray(lista)) {
                                     window.aplicarCatalogoDaNuvem(lista);
                                 }
                             } catch (e) {}
@@ -1223,7 +1223,7 @@
     <script>
         const PIN_CORRETO = "2017";
         const STORAGE_KEY_SESSION = "mc_manual_unlocked_v1";
-        const STORAGE_KEY_CATALOG = "mc_fabrica_catalogo_v1";
+        const STORAGE_KEY_CATALOG = "mc_fabrica_catalogo_v2";
         const STORAGE_KEY_TODOS = "mc_fabrica_todos_v1";
 
         function verificarPin() {
@@ -1352,13 +1352,7 @@
             cont.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
         }
 
-        const CATALOGO_INICIAL = [
-            { code: "B111", desc: "HPL Branco (Substitui B4062)", material: "HPL", l: 3050, w: 1300, grain: "sem" },
-            { code: "060", desc: "Melamina Branco Polar", material: "Melamina", l: 2850, w: 2100, grain: "sem" },
-            { code: "L121", desc: "CF Preta (Contraface Preta)", material: "HPL", l: 3050, w: 1300, grain: "sem" },
-            { code: "MDF25", desc: "MDF Cru 25mm", material: "MDF", l: 2850, w: 2100, grain: "sem" },
-            { code: "LINOLEO", desc: "Desktop Linóleo", material: "Linoleo", l: 3050, w: 1300, grain: "sem" }
-        ];
+        const CATALOGO_INICIAL = [];
 
         let catalogoRefs = [];
         window._catalogoAtual = catalogoRefs;
@@ -1371,7 +1365,7 @@
                 const guardado = localStorage.getItem(STORAGE_KEY_CATALOG);
                 if (guardado) {
                     const parsed = JSON.parse(guardado);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
+                    if (Array.isArray(parsed)) {
                         catalogoRefs = parsed;
                         window._catalogoAtual = catalogoRefs;
                         atualizarDatalistCatalogo();
@@ -1479,6 +1473,10 @@
 
             const gal = document.getElementById("catalogo-galeria-grid");
             if (gal) {
+                if (catalogoRefs.length === 0) {
+                    gal.innerHTML = `<span class="text-xs text-slate-400 italic py-1">Nenhum material guardado ainda. Preenche acima e clica em "Guardar Ref. no Catálogo".</span>`;
+                    return;
+                }
                 gal.innerHTML = catalogoRefs.map(r => {
                     const thumb = r.photo
                         ? `<img src="${r.photo}" alt="${escapeHtml(r.code)}" class="w-7 h-7 rounded-md object-cover border border-slate-300 shrink-0">`
@@ -2597,9 +2595,7 @@
             for (const item of todosLista) {
                 await window._cloudSync.saveTodo(item);
             }
-            if (catalogoRefs.length > 0) {
-                await window._cloudSync.saveCatalog(catalogoRefs);
-            }
+            await window._cloudSync.saveCatalog(catalogoRefs);
             await window._cloudSync.pullAllNow();
             mostrarToast("Tudo sincronizado com sucesso!");
         }
