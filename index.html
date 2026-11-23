@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>
@@ -924,10 +923,21 @@
                         <span id="cloud-sync-badge" class="px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-bold">
                             &#9729; A ligar à nuvem...
                         </span>
+                        <button type="button" onclick="forcarSincronizacaoManual()" title="Forçar sincronização agora" class="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold cursor-pointer">
+                            &#8635; Sincronizar
+                        </button>
                         <span id="todo-stats-badge" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
                             0 por fazer &bull; 0 feitas
                         </span>
                     </div>
+                </div>
+
+                <!-- Alerta de Diagnóstico da Nuvem (só aparece se houver bloqueio de regras/auth) -->
+                <div id="cloud-error-help" class="hidden p-3.5 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-950 space-y-1.5">
+                    <p class="font-extrabold text-rose-900">&#9888; Ação necessária no painel do teu projeto (idunaproject) para sincronizar:</p>
+                    <p id="cloud-error-detail" class="font-mono text-[11px] bg-white px-2 py-1 rounded border border-rose-200"></p>
+                    <p>1. Vai a <strong>Authentication &rarr; Sign-in method</strong> e ativa <strong>Anónimo (Anonymous)</strong>.<br>
+                    2. Vai a <strong>Firestore Database &rarr; Rules</strong> e garante que permite leitura/escrita em <code class="font-mono font-bold">/artifacts/{appId}/public/data/{document=**}</code>.</p>
                 </div>
 
                 <!-- Formulário de Nova Tarefa -->
@@ -981,27 +991,47 @@
     <!-- SINCRONIZAÇÃO NA NUVEM (FIREBASE IDUNAPROJECT) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDocs, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const badge = document.getElementById("cloud-sync-badge");
-        const firebaseConfig = {
-            apiKey: "AIzaSyCzgUm6FU1ZmysyyvI1YshO7lu0vsu2u-4",
-            authDomain: "idunaproject.firebaseapp.com",
-            projectId: "idunaproject",
-            storageBucket: "idunaproject.firebasestorage.app",
-            messagingSenderId: "905081469725",
-            appId: "1:905081469725:web:a5fa3deb440f41cd3a7ff4"
-        };
+        const errHelp = document.getElementById("cloud-error-help");
+        const errDetail = document.getElementById("cloud-error-detail");
+
+        const firebaseConfig = typeof __firebase_config !== "undefined"
+            ? JSON.parse(__firebase_config)
+            : {
+                apiKey: "AIzaSyCzgUm6FU1ZmysyyvI1YshO7lu0vsu2u-4",
+                authDomain: "idunaproject.firebaseapp.com",
+                projectId: "idunaproject",
+                storageBucket: "idunaproject.firebasestorage.app",
+                messagingSenderId: "905081469725",
+                appId: "1:905081469725:web:a5fa3deb440f41cd3a7ff4"
+            };
+
+        const appId = typeof __app_id !== "undefined" ? __app_id : "idunaproject";
+
+        function mostrarErroNuvem(msg) {
+            if (badge) {
+                badge.textContent = "Sem ligação à nuvem (ver aviso abaixo)";
+                badge.className = "px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold";
+            }
+            if (errDetail) errDetail.textContent = msg;
+            if (errHelp) errHelp.classList.remove("hidden");
+        }
+
+        function ocultarErroNuvem() {
+            if (errHelp) errHelp.classList.add("hidden");
+        }
 
         window._cloudSync = {
             ready: false,
             db: null,
             user: null,
             saveTodo: async function(item) {
-                if (!this.ready || !this.user || !this.db) return;
+                if (!this.ready || !this.user || !this.db) return false;
                 try {
-                    const ref = doc(this.db, "todos_fabrica", String(item.id));
+                    const ref = doc(this.db, "artifacts", appId, "public", "data", "todos_fabrica", String(item.id));
                     await setDoc(ref, {
                         id: item.id,
                         texto: item.texto || "",
@@ -1010,21 +1040,69 @@
                         feitoEm: item.feitoEm || null,
                         notasJson: JSON.stringify(Array.isArray(item.notas) ? item.notas : []),
                         updatedAt: Date.now()
-                    });
+                    }, { merge: true });
+                    ocultarErroNuvem();
+                    return true;
                 } catch (e) {
                     console.error("Erro ao gravar tarefa na nuvem:", e);
+                    mostrarErroNuvem(e.message || String(e));
+                    return false;
                 }
             },
             saveCatalog: async function(lista) {
-                if (!this.ready || !this.user || !this.db) return;
+                if (!this.ready || !this.user || !this.db) return false;
                 try {
-                    const ref = doc(this.db, "catalogo_fabrica", "principal");
+                    const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_fabrica", "principal");
                     await setDoc(ref, {
                         itensJson: JSON.stringify(Array.isArray(lista) ? lista : []),
                         updatedAt: Date.now()
-                    });
+                    }, { merge: true });
+                    ocultarErroNuvem();
+                    return true;
                 } catch (e) {
                     console.error("Erro ao gravar catálogo na nuvem:", e);
+                    mostrarErroNuvem(e.message || String(e));
+                    return false;
+                }
+            },
+            pullAllNow: async function() {
+                if (!this.ready || !this.user || !this.db) return;
+                try {
+                    const todosCol = collection(this.db, "artifacts", appId, "public", "data", "todos_fabrica");
+                    const snap = await getDocs(todosCol);
+                    const remotos = [];
+                    snap.forEach((docSnap) => {
+                        const d = docSnap.data();
+                        let notasParsed = [];
+                        if (d.notasJson) {
+                            try { notasParsed = JSON.parse(d.notasJson); } catch (e) {}
+                        } else if (Array.isArray(d.notas)) {
+                            notasParsed = d.notas;
+                        }
+                        remotos.push({
+                            id: d.id || Number(docSnap.id),
+                            texto: d.texto || "",
+                            criadoEm: d.criadoEm || "",
+                            feito: Boolean(d.feito),
+                            feitoEm: d.feitoEm || null,
+                            notas: notasParsed
+                        });
+                    });
+                    if (typeof window.fundirTodosComNuvem === "function") {
+                        window.fundirTodosComNuvem(remotos);
+                    }
+                    const catDoc = doc(this.db, "artifacts", appId, "public", "data", "catalogo_fabrica", "principal");
+                    const catSnap = await getDoc(catDoc);
+                    if (catSnap.exists() && catSnap.data().itensJson) {
+                        const lista = JSON.parse(catSnap.data().itensJson);
+                        if (Array.isArray(lista) && lista.length > 0 && typeof window.aplicarCatalogoDaNuvem === "function") {
+                            window.aplicarCatalogoDaNuvem(lista);
+                        }
+                    }
+                    ocultarErroNuvem();
+                } catch (e) {
+                    console.error("Erro ao atualizar da nuvem:", e);
+                    mostrarErroNuvem(e.message || String(e));
                 }
             }
         };
@@ -1035,7 +1113,13 @@
                 const auth = getAuth(app);
                 const db = getFirestore(app);
 
-                const cred = await signInAnonymously(auth);
+                let cred = null;
+                if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
+                    cred = await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    cred = await signInAnonymously(auth);
+                }
+
                 if (!cred || !cred.user) return;
 
                 window._cloudSync.db = db;
@@ -1043,12 +1127,13 @@
                 window._cloudSync.ready = true;
 
                 if (badge) {
-                    badge.innerHTML = "&#9729; Sincronizado (PC / Telemóvel / Tablet)";
+                    badge.innerHTML = "&#9729; Sincronizado em Tempo Real";
                     badge.className = "px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-[11px] font-bold";
                 }
+                ocultarErroNuvem();
 
-                // Escutar alterações nas tarefas em tempo real
-                const todosCol = collection(db, "todos_fabrica");
+                // Escutar alterações nas tarefas em tempo real no caminho público oficial
+                const todosCol = collection(db, "artifacts", appId, "public", "data", "todos_fabrica");
                 onSnapshot(todosCol, (snapshot) => {
                     const remotos = [];
                     snapshot.forEach((docSnap) => {
@@ -1069,19 +1154,16 @@
                         });
                     });
 
-                    remotos.sort((a, b) => (b.id || 0) - (a.id || 0));
-
-                    if (remotos.length > 0 && typeof window.aplicarTodosDaNuvem === "function") {
-                        window.aplicarTodosDaNuvem(remotos);
-                    } else if (remotos.length === 0 && Array.isArray(window._todosAtuais) && window._todosAtuais.length > 0) {
-                        window._todosAtuais.forEach(item => window._cloudSync.saveTodo(item));
+                    if (typeof window.fundirTodosComNuvem === "function") {
+                        window.fundirTodosComNuvem(remotos);
                     }
                 }, (err) => {
                     console.error("Erro na escuta de tarefas:", err);
+                    mostrarErroNuvem(err.message || String(err));
                 });
 
                 // Escutar alterações no catálogo em tempo real
-                const catDoc = doc(db, "catalogo_fabrica", "principal");
+                const catDoc = doc(db, "artifacts", appId, "public", "data", "catalogo_fabrica", "principal");
                 onSnapshot(catDoc, (docSnap) => {
                     if (docSnap.exists()) {
                         const d = docSnap.data();
@@ -1093,17 +1175,26 @@
                                 }
                             } catch (e) {}
                         }
+                    } else if (Array.isArray(window._catalogoAtual) && window._catalogoAtual.length > 0) {
+                        window._cloudSync.saveCatalog(window._catalogoAtual);
                     }
                 }, (err) => {
                     console.error("Erro na escuta do catálogo:", err);
                 });
 
+                // Quando o utilizador volta ao separador/ecrã do telemóvel ou PC, força leitura imediata
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === "visible") {
+                        window._cloudSync.pullAllNow();
+                    }
+                });
+                window.addEventListener("focus", () => {
+                    window._cloudSync.pullAllNow();
+                });
+
             } catch (error) {
                 console.error("Falha ao iniciar nuvem:", error);
-                if (badge) {
-                    badge.textContent = "Erro de ligação à nuvem (verifica regras do Firestore)";
-                    badge.className = "px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold";
-                }
+                mostrarErroNuvem(error.message || String(error));
             }
         }
 
@@ -1252,6 +1343,7 @@
         ];
 
         let catalogoRefs = [];
+        window._catalogoAtual = catalogoRefs;
         let pecasLista = [];
         let contadorIdPeca = 1;
 
@@ -1262,16 +1354,19 @@
                     const parsed = JSON.parse(guardado);
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         catalogoRefs = parsed;
+                        window._catalogoAtual = catalogoRefs;
                         atualizarDatalistCatalogo();
                         return;
                     }
                 }
             } catch (e) {}
             catalogoRefs = [...CATALOGO_INICIAL];
+            window._catalogoAtual = catalogoRefs;
             atualizarDatalistCatalogo();
         }
 
         function salvarCatalogoLocal() {
+            window._catalogoAtual = catalogoRefs;
             try {
                 localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
             } catch (e) {}
@@ -1283,6 +1378,7 @@
 
         window.aplicarCatalogoDaNuvem = function(lista) {
             catalogoRefs = lista;
+            window._catalogoAtual = catalogoRefs;
             try {
                 localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
             } catch (e) {}
@@ -2338,14 +2434,63 @@
             }
         }
 
-        window.aplicarTodosDaNuvem = function(remotos) {
-            todosLista = remotos;
+        // Fusão inteligente: junta tarefas locais (do telemóvel/PC) com as da nuvem sem perder nenhuma
+        window.fundirTodosComNuvem = function(remotos) {
+            const mapa = new Map();
+            const locaisParaSubir = [];
+
+            remotos.forEach(r => {
+                mapa.set(String(r.id), r);
+            });
+
+            todosLista.forEach(local => {
+                const key = String(local.id);
+                if (!mapa.has(key)) {
+                    // Tarefa criada neste dispositivo que ainda não subiu para a nuvem
+                    mapa.set(key, local);
+                    locaisParaSubir.push(local);
+                } else {
+                    const rem = mapa.get(key);
+                    const notasLocal = Array.isArray(local.notas) ? local.notas : [];
+                    const notasRem = Array.isArray(rem.notas) ? rem.notas : [];
+
+                    // Se este dispositivo tiver mais notas internas na tarefa, mantém a versão mais recente e envia
+                    if (notasLocal.length > notasRem.length) {
+                        mapa.set(key, local);
+                        locaisParaSubir.push(local);
+                    }
+                }
+            });
+
+            const listaUnificada = Array.from(mapa.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+            todosLista = listaUnificada;
             window._todosAtuais = todosLista;
+
             try {
                 localStorage.setItem(STORAGE_KEY_TODOS, JSON.stringify(todosLista));
             } catch (e) {}
             renderizarTodos();
+
+            if (locaisParaSubir.length > 0 && window._cloudSync && window._cloudSync.ready) {
+                locaisParaSubir.forEach(item => window._cloudSync.saveTodo(item));
+            }
         };
+
+        async function forcarSincronizacaoManual() {
+            if (!window._cloudSync || !window._cloudSync.ready) {
+                mostrarToast("A nuvem ainda não está ligada. Verifica o aviso a vermelho.");
+                return;
+            }
+            mostrarToast("A sincronizar notas e referências...");
+            for (const item of todosLista) {
+                await window._cloudSync.saveTodo(item);
+            }
+            if (catalogoRefs.length > 0) {
+                await window._cloudSync.saveCatalog(catalogoRefs);
+            }
+            await window._cloudSync.pullAllNow();
+            mostrarToast("Tudo sincronizado com sucesso!");
+        }
 
         function formatarDataHoraAtual() {
             const agora = new Date();
@@ -2574,4 +2719,3 @@
     </script>
 </body>
 </html>
-```
