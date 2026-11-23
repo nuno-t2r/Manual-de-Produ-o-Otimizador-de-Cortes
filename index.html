@@ -102,7 +102,7 @@
                 <p><strong>2. Como guardar alterações no GitHub Pages:</strong><br>
                 Depois de colares ou editares o código, clica em <strong>Commit changes...</strong> e aguarda cerca de 1 minuto até o GitHub Pages atualizar o site.</p>
                 <p><strong>3. Sincronização na Nuvem Ativa (idunaproject):</strong><br>
-                A tua <strong>To-Do List</strong> e o <strong>Catálogo de Referências</strong> estão ligados ao teu Firebase e sincronizam automaticamente entre PC, telemóvel e tablet.</p>
+                A tua <strong>To-Do List</strong> e o <strong>Catálogo de Referências</strong> (incluindo fotos) estão ligados ao teu Firebase e sincronizam automaticamente entre PC, telemóvel e tablet.</p>
             </div>
             <div class="flex justify-end pt-2">
                 <button type="button" onclick="toggleModal('github-modal', false)" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Fechar</button>
@@ -268,7 +268,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                        <div class="sm:col-span-5">
+                        <div class="sm:col-span-4">
                             <label class="block text-xs font-bold text-slate-700 mb-1">Referência (selecionar ou escrever)</label>
                             <input
                                 type="text"
@@ -280,7 +280,7 @@
                             >
                             <datalist id="catalogo-datalist"></datalist>
                         </div>
-                        <div class="sm:col-span-7">
+                        <div class="sm:col-span-5">
                             <label class="block text-xs font-bold text-slate-700 mb-1">Descrição / Acabamento</label>
                             <input
                                 type="text"
@@ -288,6 +288,19 @@
                                 placeholder="Ex: HPL Branco / Melamina Branco Polar..."
                                 class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-600"
                             >
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Foto / Textura</label>
+                            <div class="flex items-center gap-1.5">
+                                <label class="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 text-xs font-bold cursor-pointer transition truncate" title="Carregar foto do material do PC">
+                                    <span>&#128247; Carregar</span>
+                                    <input type="file" id="opt-ref-photo-input" accept="image/*" onchange="aoCarregarFotoMaterial(event)" class="hidden">
+                                </label>
+                                <div id="opt-ref-photo-preview-box" class="hidden relative w-9 h-9 rounded-lg border border-slate-300 overflow-hidden shrink-0 bg-slate-100">
+                                    <img id="opt-ref-photo-preview" src="" alt="Amostra" class="w-full h-full object-cover">
+                                    <button type="button" onclick="removerFotoMaterialAtual()" title="Remover foto" class="absolute inset-0 bg-slate-950/60 text-white opacity-0 hover:opacity-100 flex items-center justify-center text-[10px] font-black cursor-pointer transition">&#10005;</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -332,6 +345,14 @@
                                 &#128190; Guardar Ref. no Catálogo
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Galeria Rápida de Materiais Guardados no Catálogo -->
+                    <div id="catalogo-galeria-wrapper" class="pt-2 border-t border-slate-100">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Catálogo Rápido (clica para selecionar):</span>
+                        </div>
+                        <div id="catalogo-galeria-grid" class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar"></div>
                     </div>
                 </div>
 
@@ -1132,7 +1153,6 @@
                 }
                 ocultarErroNuvem();
 
-                // Escutar alterações nas tarefas em tempo real no caminho público oficial
                 const todosCol = collection(db, "artifacts", appId, "public", "data", "todos_fabrica");
                 onSnapshot(todosCol, (snapshot) => {
                     const remotos = [];
@@ -1162,7 +1182,6 @@
                     mostrarErroNuvem(err.message || String(err));
                 });
 
-                // Escutar alterações no catálogo em tempo real
                 const catDoc = doc(db, "artifacts", appId, "public", "data", "catalogo_fabrica", "principal");
                 onSnapshot(catDoc, (docSnap) => {
                     if (docSnap.exists()) {
@@ -1182,7 +1201,6 @@
                     console.error("Erro na escuta do catálogo:", err);
                 });
 
-                // Quando o utilizador volta ao separador/ecrã do telemóvel ou PC, força leitura imediata
                 document.addEventListener("visibilitychange", () => {
                     if (document.visibilityState === "visible") {
                         window._cloudSync.pullAllNow();
@@ -1344,6 +1362,7 @@
 
         let catalogoRefs = [];
         window._catalogoAtual = catalogoRefs;
+        let fotoMaterialAtual = "";
         let pecasLista = [];
         let contadorIdPeca = 1;
 
@@ -1383,14 +1402,98 @@
                 localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
             } catch (e) {}
             atualizarDatalistCatalogo();
+            aoEscreverReferencia();
         };
+
+        function atualizarPreviewFotoMaterial(dataUrl) {
+            fotoMaterialAtual = dataUrl || "";
+            const box = document.getElementById("opt-ref-photo-preview-box");
+            const img = document.getElementById("opt-ref-photo-preview");
+            if (!box || !img) return;
+            if (fotoMaterialAtual) {
+                img.src = fotoMaterialAtual;
+                box.classList.remove("hidden");
+            } else {
+                img.src = "";
+                box.classList.add("hidden");
+            }
+        }
+
+        function removerFotoMaterialAtual() {
+            const inp = document.getElementById("opt-ref-photo-input");
+            if (inp) inp.value = "";
+            atualizarPreviewFotoMaterial("");
+            executarOtimizacao(false);
+            mostrarToast("Foto do material removida.");
+        }
+
+        function aoCarregarFotoMaterial(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const maxDim = 320;
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) {
+                            h = Math.round((h * maxDim) / w);
+                            w = maxDim;
+                        } else {
+                            w = Math.round((w * maxDim) / h);
+                            h = maxDim;
+                        }
+                    }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const comprimida = canvas.toDataURL("image/jpeg", 0.72);
+                    atualizarPreviewFotoMaterial(comprimida);
+                    executarOtimizacao(false);
+                    mostrarToast("Foto carregada! Clica em 'Guardar Ref.' para gravar no catálogo.");
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function selecionarReferenciaRapida(code) {
+            const inp = document.getElementById("opt-ref-code");
+            if (!inp) return;
+            inp.value = code;
+            aoEscreverReferencia();
+        }
 
         function atualizarDatalistCatalogo() {
             const dl = document.getElementById("catalogo-datalist");
-            if (!dl) return;
-            dl.innerHTML = catalogoRefs.map(r =>
-                `<option value="${escapeHtml(r.code)}">${escapeHtml(r.desc)} (${r.material} ${r.l}×${r.w})</option>`
-            ).join("");
+            if (dl) {
+                dl.innerHTML = catalogoRefs.map(r =>
+                    `<option value="${escapeHtml(r.code)}">${escapeHtml(r.desc)} (${r.material} ${r.l}×${r.w})</option>`
+                ).join("");
+            }
+
+            const gal = document.getElementById("catalogo-galeria-grid");
+            if (gal) {
+                gal.innerHTML = catalogoRefs.map(r => {
+                    const thumb = r.photo
+                        ? `<img src="${r.photo}" alt="${escapeHtml(r.code)}" class="w-7 h-7 rounded-md object-cover border border-slate-300 shrink-0">`
+                        : `<span class="w-7 h-7 rounded-md bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-black shrink-0">${escapeHtml(r.code.slice(0, 3))}</span>`;
+                    return `
+                        <button type="button" onclick="selecionarReferenciaRapida('${escapeHtml(r.code)}')" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-left shrink-0 transition cursor-pointer">
+                            ${thumb}
+                            <div class="leading-tight">
+                                <span class="block font-mono font-extrabold text-[11px] text-slate-900">${escapeHtml(r.code)}</span>
+                                <span class="block text-[10px] text-slate-500 max-w-[110px] truncate">${escapeHtml(r.desc)}</span>
+                            </div>
+                        </button>
+                    `;
+                }).join("");
+            }
         }
 
         function aoEscreverReferencia() {
@@ -1404,6 +1507,7 @@
                 document.getElementById("opt-sheet-l").value = encontrada.l || 2850;
                 document.getElementById("opt-sheet-w").value = encontrada.w || 2100;
                 document.getElementById("opt-grain-select").value = encontrada.grain || "sem";
+                atualizarPreviewFotoMaterial(encontrada.photo || "");
                 if (btnDel) btnDel.classList.remove("hidden");
                 aoMudarMaterial();
             } else {
@@ -1424,7 +1528,7 @@
             const grain = document.getElementById("opt-grain-select").value;
 
             const idx = catalogoRefs.findIndex(r => r.code.toUpperCase() === code);
-            const registo = { code, desc, material, l, w, grain };
+            const registo = { code, desc, material, l, w, grain, photo: fotoMaterialAtual || "" };
             if (idx >= 0) {
                 catalogoRefs[idx] = registo;
             } else {
@@ -1442,6 +1546,7 @@
             catalogoRefs = catalogoRefs.filter(r => r.code.toUpperCase() !== code);
             document.getElementById("opt-ref-code").value = "";
             document.getElementById("opt-ref-desc").value = "";
+            atualizarPreviewFotoMaterial("");
             const btnDel = document.getElementById("btn-del-ref");
             if (btnDel) btnDel.classList.add("hidden");
             salvarCatalogoLocal();
@@ -2213,17 +2318,20 @@
 
                     const mostraTexto = pw >= 110 && ph >= 75;
                     const textoSvg = mostraTexto ? `
-                        <text x="${cx}" y="${cy - fontSub * 0.35}" text-anchor="middle" dominant-baseline="middle" fill="${cor.text}" font-family="Inter, sans-serif" font-weight="800" font-size="${fontMain}">
+                        ${fotoMaterialAtual ? `
+                            <rect x="${cx - Math.min(pw * 0.44, 240)}" y="${cy - fontSub * 1.1}" width="${Math.min(pw * 0.88, 480)}" height="${fontMain + fontSub * 1.7}" rx="8" fill="#ffffff" fill-opacity="0.90" />
+                        ` : ""}
+                        <text x="${cx}" y="${cy - fontSub * 0.35}" text-anchor="middle" dominant-baseline="middle" fill="${fotoMaterialAtual ? '#0f172a' : cor.text}" font-family="Inter, sans-serif" font-weight="800" font-size="${fontMain}">
                             ${pc.w} × ${pc.h}
                         </text>
-                        <text x="${cx}" y="${cy + fontMain * 0.75}" text-anchor="middle" dominant-baseline="middle" fill="${cor.text}" font-family="Inter, sans-serif" font-weight="600" font-size="${fontSub}">
+                        <text x="${cx}" y="${cy + fontMain * 0.75}" text-anchor="middle" dominant-baseline="middle" fill="${fotoMaterialAtual ? '#1e293b' : cor.text}" font-family="Inter, sans-serif" font-weight="600" font-size="${fontSub}">
                             ${escapeHtml(pc.label)} (Final: ${pc.finalL}×${pc.finalW})${rotIcon}
                         </text>
                     ` : "";
 
                     return `
                         <g>
-                            <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${cor.fill}" stroke="${cor.stroke}" stroke-width="2" />
+                            <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${fotoMaterialAtual ? `url(#mat-pattern-${idx})` : cor.fill}" stroke="${cor.stroke}" stroke-width="2" />
                             ${linhasOrla}
                             ${textoSvg}
                         </g>
@@ -2299,7 +2407,14 @@
                         </div>
 
                         <div class="svg-backdrop bg-slate-800 p-3 sm:p-5">
-                            <svg viewBox="${-padSide} ${-padTop} ${vbW} ${vbH}" class="w-full h-auto max-h-[540px] mx-auto block select-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-padSide} ${-padTop} ${vbW} ${vbH}" class="w-full h-auto max-h-[540px] mx-auto block select-none">
+                                ${fotoMaterialAtual ? `
+                                    <defs>
+                                        <pattern id="mat-pattern-${idx}" patternUnits="userSpaceOnUse" width="${sheetL}" height="${sheetW}">
+                                            <image href="${fotoMaterialAtual}" xlink:href="${fotoMaterialAtual}" x="0" y="0" width="${sheetL}" height="${sheetW}" preserveAspectRatio="xMidYMid slice" />
+                                        </pattern>
+                                    </defs>
+                                ` : ""}
                                 <text x="0" y="-32" fill="#f8fafc" font-family="Inter, sans-serif" font-weight="800" font-size="26">
                                     PLACA-MÃE TOTAL: ${sheetL} × ${sheetW} mm
                                 </text>
@@ -2434,7 +2549,6 @@
             }
         }
 
-        // Fusão inteligente: junta tarefas locais (do telemóvel/PC) com as da nuvem sem perder nenhuma
         window.fundirTodosComNuvem = function(remotos) {
             const mapa = new Map();
             const locaisParaSubir = [];
@@ -2446,7 +2560,6 @@
             todosLista.forEach(local => {
                 const key = String(local.id);
                 if (!mapa.has(key)) {
-                    // Tarefa criada neste dispositivo que ainda não subiu para a nuvem
                     mapa.set(key, local);
                     locaisParaSubir.push(local);
                 } else {
@@ -2454,7 +2567,6 @@
                     const notasLocal = Array.isArray(local.notas) ? local.notas : [];
                     const notasRem = Array.isArray(rem.notas) ? rem.notas : [];
 
-                    // Se este dispositivo tiver mais notas internas na tarefa, mantém a versão mais recente e envia
                     if (notasLocal.length > notasRem.length) {
                         mapa.set(key, local);
                         locaisParaSubir.push(local);
