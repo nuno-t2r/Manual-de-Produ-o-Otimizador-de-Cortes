@@ -1013,7 +1013,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDocs, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDocs, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const badge = document.getElementById("cloud-sync-badge");
         const errHelp = document.getElementById("cloud-error-help");
@@ -1076,7 +1076,6 @@
                     const itens = Array.isArray(lista) ? lista : [];
                     const idsAtuais = new Set(itens.map(r => String(r.code).trim().toUpperCase()));
 
-                    // Gravar cada referência no seu próprio documento (evita limite de 1MB com fotos)
                     for (const item of itens) {
                         const docId = String(item.code).trim().toUpperCase();
                         if (!docId) continue;
@@ -1094,7 +1093,6 @@
                         }, { merge: true });
                     }
 
-                    // Marcar como apagadas referências removidas
                     const colRef = collection(this.db, "artifacts", appId, "public", "data", "catalogo_itens");
                     const snap = await getDocs(colRef);
                     for (const dSnap of snap.docs) {
@@ -1109,7 +1107,7 @@
                     console.error("Erro ao gravar catálogo na nuvem:", e);
                     mostrarErroNuvem(e.message || String(e));
                     if (typeof window.mostrarToast === "function") {
-                        window.mostrarToast("Aviso: Referência guardada só no PC (ver erro de nuvem na To-Do List).");
+                        window.mostrarToast("Aviso: Referência guardada só no dispositivo (ver erro de nuvem na To-Do List).");
                     }
                     return false;
                 }
@@ -1222,6 +1220,7 @@
                     mostrarErroNuvem(err.message || String(err));
                 });
 
+                // A nuvem é a única fonte da verdade para o catálogo (inclui lista vazia se tudo foi apagado)
                 const catCol = collection(db, "artifacts", appId, "public", "data", "catalogo_itens");
                 onSnapshot(catCol, (snapshot) => {
                     const lista = [];
@@ -1239,10 +1238,8 @@
                             });
                         }
                     });
-                    if (lista.length > 0 && typeof window.aplicarCatalogoDaNuvem === "function") {
+                    if (typeof window.aplicarCatalogoDaNuvem === "function") {
                         window.aplicarCatalogoDaNuvem(lista);
-                    } else if (lista.length === 0 && Array.isArray(window._catalogoAtual) && window._catalogoAtual.length > 0) {
-                        window._cloudSync.saveCatalog(window._catalogoAtual);
                     }
                 }, (err) => {
                     console.error("Erro na escuta do catálogo:", err);
@@ -1270,7 +1267,7 @@
     <script>
         const PIN_CORRETO = "2017";
         const STORAGE_KEY_SESSION = "mc_manual_unlocked_v1";
-        const STORAGE_KEY_CATALOG = "mc_fabrica_catalogo_v2";
+        const STORAGE_KEY_CATALOG = "mc_fabrica_catalogo_v3";
         const STORAGE_KEY_TODOS = "mc_fabrica_todos_v1";
 
         function verificarPin() {
@@ -1399,8 +1396,6 @@
             cont.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
         }
 
-        const CATALOGO_INICIAL = [];
-
         let catalogoRefs = [];
         window._catalogoAtual = catalogoRefs;
         let fotoMaterialAtual = "";
@@ -1409,24 +1404,19 @@
 
         function carregarCatalogo() {
             try {
-                const v2 = JSON.parse(localStorage.getItem(STORAGE_KEY_CATALOG) || "[]");
-                const v1 = JSON.parse(localStorage.getItem("mc_fabrica_catalogo_v1") || "[]");
-                const mapa = new Map();
-                [...(Array.isArray(v1) ? v1 : []), ...(Array.isArray(v2) ? v2 : [])].forEach(item => {
-                    if (item && item.code) {
-                        mapa.set(String(item.code).trim().toUpperCase(), item);
-                    }
-                });
-                const combinados = Array.from(mapa.values());
-                if (combinados.length > 0) {
-                    catalogoRefs = combinados;
+                // Limpar chaves antigas v1 e v2 que continham materiais pré-carregados
+                localStorage.removeItem("mc_fabrica_catalogo_v1");
+                localStorage.removeItem("mc_fabrica_catalogo_v2");
+
+                const v3 = JSON.parse(localStorage.getItem(STORAGE_KEY_CATALOG) || "[]");
+                if (Array.isArray(v3)) {
+                    catalogoRefs = v3;
                     window._catalogoAtual = catalogoRefs;
-                    localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
                     atualizarDatalistCatalogo();
                     return;
                 }
             } catch (e) {}
-            catalogoRefs = [...CATALOGO_INICIAL];
+            catalogoRefs = [];
             window._catalogoAtual = catalogoRefs;
             atualizarDatalistCatalogo();
         }
@@ -1443,7 +1433,7 @@
         }
 
         window.aplicarCatalogoDaNuvem = function(lista) {
-            catalogoRefs = lista;
+            catalogoRefs = Array.isArray(lista) ? lista : [];
             window._catalogoAtual = catalogoRefs;
             try {
                 localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
