@@ -1073,16 +1073,44 @@
             saveCatalog: async function(lista) {
                 if (!this.ready || !this.user || !this.db) return false;
                 try {
-                    const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_fabrica", "principal");
-                    await setDoc(ref, {
-                        itensJson: JSON.stringify(Array.isArray(lista) ? lista : []),
-                        updatedAt: Date.now()
-                    }, { merge: true });
+                    const itens = Array.isArray(lista) ? lista : [];
+                    const idsAtuais = new Set(itens.map(r => String(r.code).trim().toUpperCase()));
+
+                    // Gravar cada referência no seu próprio documento (evita limite de 1MB com fotos)
+                    for (const item of itens) {
+                        const docId = String(item.code).trim().toUpperCase();
+                        if (!docId) continue;
+                        const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_itens", docId);
+                        await setDoc(ref, {
+                            code: docId,
+                            desc: item.desc || docId,
+                            material: item.material || "Melamina",
+                            l: Number(item.l) || 2850,
+                            w: Number(item.w) || 2100,
+                            grain: item.grain || "sem",
+                            photo: item.photo || "",
+                            deleted: false,
+                            updatedAt: Date.now()
+                        }, { merge: true });
+                    }
+
+                    // Marcar como apagadas referências removidas
+                    const colRef = collection(this.db, "artifacts", appId, "public", "data", "catalogo_itens");
+                    const snap = await getDocs(colRef);
+                    for (const dSnap of snap.docs) {
+                        if (!idsAtuais.has(dSnap.id) && !dSnap.data().deleted) {
+                            await setDoc(dSnap.ref, { deleted: true, updatedAt: Date.now() }, { merge: true });
+                        }
+                    }
+
                     ocultarErroNuvem();
                     return true;
                 } catch (e) {
                     console.error("Erro ao gravar catálogo na nuvem:", e);
                     mostrarErroNuvem(e.message || String(e));
+                    if (typeof window.mostrarToast === "function") {
+                        window.mostrarToast("Aviso: Referência guardada só no PC (ver erro de nuvem na To-Do List).");
+                    }
                     return false;
                 }
             },
@@ -1112,13 +1140,25 @@
                     if (typeof window.fundirTodosComNuvem === "function") {
                         window.fundirTodosComNuvem(remotos);
                     }
-                    const catDoc = doc(this.db, "artifacts", appId, "public", "data", "catalogo_fabrica", "principal");
-                    const catSnap = await getDoc(catDoc);
-                    if (catSnap.exists() && catSnap.data().itensJson) {
-                        const lista = JSON.parse(catSnap.data().itensJson);
-                        if (Array.isArray(lista) && typeof window.aplicarCatalogoDaNuvem === "function") {
-                            window.aplicarCatalogoDaNuvem(lista);
+                    const catCol = collection(this.db, "artifacts", appId, "public", "data", "catalogo_itens");
+                    const catSnap = await getDocs(catCol);
+                    const listaCat = [];
+                    catSnap.forEach((dSnap) => {
+                        const d = dSnap.data();
+                        if (!d.deleted && d.code) {
+                            listaCat.push({
+                                code: d.code,
+                                desc: d.desc || d.code,
+                                material: d.material || "Melamina",
+                                l: d.l || 2850,
+                                w: d.w || 2100,
+                                grain: d.grain || "sem",
+                                photo: d.photo || ""
+                            });
                         }
+                    });
+                    if (typeof window.aplicarCatalogoDaNuvem === "function") {
+                        window.aplicarCatalogoDaNuvem(listaCat);
                     }
                     ocultarErroNuvem();
                 } catch (e) {
@@ -1178,23 +1218,30 @@
                         window.fundirTodosComNuvem(remotos);
                     }
                 }, (err) => {
-                    console.error("Erro na escuta de tarefas:", err);
+                    console.error("Erro na escuta das tarefas:", err);
                     mostrarErroNuvem(err.message || String(err));
                 });
 
-                const catDoc = doc(db, "artifacts", appId, "public", "data", "catalogo_fabrica", "principal");
-                onSnapshot(catDoc, (docSnap) => {
-                    if (docSnap.exists()) {
+                const catCol = collection(db, "artifacts", appId, "public", "data", "catalogo_itens");
+                onSnapshot(catCol, (snapshot) => {
+                    const lista = [];
+                    snapshot.forEach((docSnap) => {
                         const d = docSnap.data();
-                        if (d.itensJson && typeof window.aplicarCatalogoDaNuvem === "function") {
-                            try {
-                                const lista = JSON.parse(d.itensJson);
-                                if (Array.isArray(lista)) {
-                                    window.aplicarCatalogoDaNuvem(lista);
-                                }
-                            } catch (e) {}
+                        if (!d.deleted && d.code) {
+                            lista.push({
+                                code: d.code,
+                                desc: d.desc || d.code,
+                                material: d.material || "Melamina",
+                                l: d.l || 2850,
+                                w: d.w || 2100,
+                                grain: d.grain || "sem",
+                                photo: d.photo || ""
+                            });
                         }
-                    } else if (Array.isArray(window._catalogoAtual) && window._catalogoAtual.length > 0) {
+                    });
+                    if (lista.length > 0 && typeof window.aplicarCatalogoDaNuvem === "function") {
+                        window.aplicarCatalogoDaNuvem(lista);
+                    } else if (lista.length === 0 && Array.isArray(window._catalogoAtual) && window._catalogoAtual.length > 0) {
                         window._cloudSync.saveCatalog(window._catalogoAtual);
                     }
                 }, (err) => {
@@ -1362,15 +1409,21 @@
 
         function carregarCatalogo() {
             try {
-                const guardado = localStorage.getItem(STORAGE_KEY_CATALOG);
-                if (guardado) {
-                    const parsed = JSON.parse(guardado);
-                    if (Array.isArray(parsed)) {
-                        catalogoRefs = parsed;
-                        window._catalogoAtual = catalogoRefs;
-                        atualizarDatalistCatalogo();
-                        return;
+                const v2 = JSON.parse(localStorage.getItem(STORAGE_KEY_CATALOG) || "[]");
+                const v1 = JSON.parse(localStorage.getItem("mc_fabrica_catalogo_v1") || "[]");
+                const mapa = new Map();
+                [...(Array.isArray(v1) ? v1 : []), ...(Array.isArray(v2) ? v2 : [])].forEach(item => {
+                    if (item && item.code) {
+                        mapa.set(String(item.code).trim().toUpperCase(), item);
                     }
+                });
+                const combinados = Array.from(mapa.values());
+                if (combinados.length > 0) {
+                    catalogoRefs = combinados;
+                    window._catalogoAtual = catalogoRefs;
+                    localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
+                    atualizarDatalistCatalogo();
+                    return;
                 }
             } catch (e) {}
             catalogoRefs = [...CATALOGO_INICIAL];
