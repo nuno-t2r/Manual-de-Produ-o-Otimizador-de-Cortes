@@ -688,7 +688,23 @@
                     </div>
                 </section>
 
-                <!-- 4. Cálculo de Matérias-Primas (MaxCut) & Exceções -->
+                <!-- 4. Ver Emails Recebidos -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-sky-600 rounded-full inline-block"></span>
+                            Ver Emails Recebidos
+                        </h2>
+                    </div>
+                    <ul class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <li>&#8226; <strong>Copiar as referências</strong> do que foi acrescentado e verificar junto com a encomenda.</li>
+                        <li class="p-2.5 bg-sky-50 border border-sky-200 rounded-xl text-sky-950 font-semibold">
+                            &#10148; Quando é <strong>chapa, folheado, lacado</strong> (o que não é madeira) &rarr; <strong>desvalorizar material</strong>.
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- 5. Cálculo de Matérias-Primas (MaxCut) & Exceções -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -711,7 +727,7 @@
                     </div>
                 </section>
 
-                <!-- 5. Procurar Referências & Fazer Requisições (Iduna / Sage) -->
+                <!-- 6. Procurar Referências & Fazer Requisições (Iduna / Sage) -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -734,7 +750,7 @@
                     </div>
                 </section>
 
-                <!-- 6. Receção de Material, Baixa & Entregas Parciais -->
+                <!-- 7. Receção de Material, Baixa & Entregas Parciais -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -754,7 +770,30 @@
                     </div>
                 </section>
 
-                <!-- 7. Regras de Orlas & Pré-Fresador da Orladora -->
+                <!-- 8. Dar Baixa do Material de Corte -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-cyan-600 rounded-full inline-block"></span>
+                            Dar Baixa do Material de Corte
+                        </h2>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <p><strong>Caminho:</strong> <code class="font-mono bg-slate-100 px-1 rounded">Produção / Entradas e Saídas Diversas</code> &rarr; <code class="font-mono font-bold">Novo Registo</code>:</p>
+                        <ul class="space-y-1 pl-2 border-l-2 border-cyan-500">
+                            <li>&#8226; <strong>Tipo Movimento:</strong> Saída</li>
+                            <li>&#8226; <strong>Descrição:</strong> Iduna, Carpiguima ou Hyunda</li>
+                            <li>&#8226; <strong>O Importado:</strong> Desabilitado</li>
+                        </ul>
+                        <p><strong>Passos seguintes:</strong><br>
+                        Clicar em <code class="font-mono font-bold">Insert</code> &rarr; Carregar em <strong>Nova Linha</strong> &rarr; <strong>Lista de Artigos</strong> &rarr; Procurar pela referência em <strong>Descrição</strong> &rarr; Inserir o material correspondente &rarr; <strong>Select</strong> &rarr; Inserir <strong>Qtd Placas</strong>, <strong>Encomenda</strong> e <strong>Fornecedor</strong> (<em>Oficina Comércio e Indústria de Mobiliário</em>) &rarr; <code class="font-mono font-bold">Insert</code>.</p>
+                        <div class="p-2.5 bg-cyan-50 border border-cyan-200 rounded-xl text-cyan-950 font-semibold">
+                            <strong>P.S.:</strong> Quando forem várias encomendas e não tiver espaço, colocar nas <strong>Observações</strong>.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 9. Regras de Orlas & Pré-Fresador da Orladora -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -773,7 +812,7 @@
                     </ul>
                 </section>
 
-                <!-- 8. Stock Standard (Alerta abaixo de 50%) -->
+                <!-- 10. Stock Standard (Alerta abaixo de 50%) -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -793,7 +832,7 @@
                     </ul>
                 </section>
 
-                <!-- 9. Organização de Fábrica, Pilhas & Notas de Armazém -->
+                <!-- 11. Organização de Fábrica, Pilhas & Notas de Armazém -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
