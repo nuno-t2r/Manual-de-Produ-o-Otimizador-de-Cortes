@@ -959,7 +959,7 @@
                     <p class="font-extrabold text-rose-900">&#9888; Ação necessária no painel do teu projeto (idunaproject) para sincronizar:</p>
                     <p id="cloud-error-detail" class="font-mono text-[11px] bg-white px-2 py-1 rounded border border-rose-200"></p>
                     <p>1. Vai a <strong>Authentication &rarr; Sign-in method</strong> e ativa <strong>Anónimo (Anonymous)</strong>.<br>
-                    2. Vai a <strong>Firestore Database &rarr; Rules</strong> e garante que permite leitura/escrita em <code class="font-mono font-bold">/artifacts/{appId}/public/data/{document=**}</code>.</p>
+                    2. Vai a <strong>Firestore Database &rarr; Rules</strong>, cola <code class="font-mono font-bold">allow read, write: if true;</code> e clica em <strong>Publicar</strong>.</p>
                 </div>
 
                 <!-- Formulário de Nova Tarefa -->
@@ -1031,9 +1031,8 @@
                 appId: "1:905081469725:web:a5fa3deb440f41cd3a7ff4"
             };
 
-        const appId = typeof __app_id !== "undefined" ? __app_id : "idunaproject";
-
         function mostrarErroNuvem(msg) {
+            window._ultimoErroNuvem = msg;
             if (badge) {
                 badge.textContent = "Sem ligação à nuvem (ver aviso abaixo)";
                 badge.className = "px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold";
@@ -1043,6 +1042,7 @@
         }
 
         function ocultarErroNuvem() {
+            window._ultimoErroNuvem = "";
             if (errHelp) errHelp.classList.add("hidden");
         }
 
@@ -1064,16 +1064,16 @@
             db: null,
             user: null,
             saveTodo: async function(item) {
-                if (!this.ready || !this.user || !this.db) return false;
+                if (!this.ready || !this.db) return false;
                 try {
                     const listaCompleta = Array.isArray(window._todosAtuais) ? window._todosAtuais : [item];
-                    const masterRef = doc(this.db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                    const masterRef = doc(this.db, "fabrica_todos_v4", "unico");
                     await setDoc(masterRef, {
                         itemsJson: JSON.stringify(listaCompleta),
                         updatedAt: Date.now()
                     }, { merge: true });
 
-                    const itemRef = doc(this.db, "artifacts", appId, "public", "data", "todos_fabrica", String(item.id));
+                    const itemRef = doc(this.db, "fabrica_todos_itens_v4", String(item.id));
                     await setDoc(itemRef, {
                         id: item.id,
                         texto: item.texto || "",
@@ -1093,17 +1093,17 @@
                 }
             },
             saveAllTodos: async function(listaCompleta) {
-                if (!this.ready || !this.user || !this.db) return false;
+                if (!this.ready || !this.db) return false;
                 try {
                     const itens = Array.isArray(listaCompleta) ? listaCompleta : [];
-                    const masterRef = doc(this.db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                    const masterRef = doc(this.db, "fabrica_todos_v4", "unico");
                     await setDoc(masterRef, {
                         itemsJson: JSON.stringify(itens),
                         updatedAt: Date.now()
                     }, { merge: true });
 
                     for (const item of itens) {
-                        const itemRef = doc(this.db, "artifacts", appId, "public", "data", "todos_fabrica", String(item.id));
+                        const itemRef = doc(this.db, "fabrica_todos_itens_v4", String(item.id));
                         await setDoc(itemRef, {
                             id: item.id,
                             texto: item.texto || "",
@@ -1123,10 +1123,10 @@
                 }
             },
             saveCatalogItem: async function(registo) {
-                if (!this.ready || !this.user || !this.db || !registo || !registo.code) return false;
+                if (!this.ready || !this.db || !registo || !registo.code) return false;
                 try {
                     const docId = String(registo.code).trim().toUpperCase();
-                    const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_itens", docId);
+                    const ref = doc(this.db, "fabrica_catalogo_v4", docId);
                     await setDoc(ref, {
                         code: docId,
                         desc: registo.desc || docId,
@@ -1147,10 +1147,10 @@
                 }
             },
             deleteCatalogItem: async function(code) {
-                if (!this.ready || !this.user || !this.db || !code) return false;
+                if (!this.ready || !this.db || !code) return false;
                 try {
                     const docId = String(code).trim().toUpperCase();
-                    const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_itens", docId);
+                    const ref = doc(this.db, "fabrica_catalogo_v4", docId);
                     await setDoc(ref, { deleted: true, photo: "", updatedAt: Date.now() }, { merge: true });
                     return true;
                 } catch (e) {
@@ -1159,7 +1159,7 @@
                 }
             },
             saveCatalog: async function(lista) {
-                if (!this.ready || !this.user || !this.db) return false;
+                if (!this.ready || !this.db) return false;
                 try {
                     const itens = Array.isArray(lista) ? lista : [];
                     const idsAtuais = new Set(itens.map(r => String(r.code).trim().toUpperCase()));
@@ -1168,7 +1168,7 @@
                         await this.saveCatalogItem(item);
                     }
 
-                    const colRef = collection(this.db, "artifacts", appId, "public", "data", "catalogo_itens");
+                    const colRef = collection(this.db, "fabrica_catalogo_v4");
                     const snap = await getDocs(colRef);
                     for (const dSnap of snap.docs) {
                         if (!idsAtuais.has(dSnap.id) && !dSnap.data().deleted) {
@@ -1185,12 +1185,11 @@
                 }
             },
             pullAllNow: async function() {
-                if (!this.ready || !this.user || !this.db) return;
+                if (!this.ready || !this.db) return false;
                 try {
                     const mapaRemoto = new Map();
 
-                    // 1. Ler documento mestre das tarefas
-                    const masterRef = doc(this.db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                    const masterRef = doc(this.db, "fabrica_todos_v4", "unico");
                     const masterSnap = await getDoc(masterRef);
                     if (masterSnap.exists() && masterSnap.data().itemsJson) {
                         try {
@@ -1199,8 +1198,7 @@
                         } catch (e) {}
                     }
 
-                    // 2. Ler também a coleção individual para nunca perder nada criado anteriormente
-                    const todosCol = collection(this.db, "artifacts", appId, "public", "data", "todos_fabrica");
+                    const todosCol = collection(this.db, "fabrica_todos_itens_v4");
                     const snap = await getDocs(todosCol);
                     snap.forEach((docSnap) => {
                         const d = docSnap.data();
@@ -1229,8 +1227,7 @@
                         window.fundirTodosComNuvem(Array.from(mapaRemoto.values()));
                     }
 
-                    // 3. Ler catálogo de referências
-                    const catCol = collection(this.db, "artifacts", appId, "public", "data", "catalogo_itens");
+                    const catCol = collection(this.db, "fabrica_catalogo_v4");
                     const catSnap = await getDocs(catCol);
                     const listaCat = [];
                     catSnap.forEach((dSnap) => {
@@ -1251,9 +1248,11 @@
                         window.aplicarCatalogoDaNuvem(listaCat);
                     }
                     ocultarErroNuvem();
+                    return true;
                 } catch (e) {
                     console.error("Erro ao atualizar da nuvem:", e);
                     mostrarErroNuvem(e.message || String(e));
+                    return false;
                 }
             }
         };
@@ -1265,17 +1264,22 @@
                 const db = getFirestore(app);
 
                 let cred = null;
-                if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
-                    cred = await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    cred = await signInAnonymously(auth);
+                try {
+                    if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
+                        cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        cred = await signInAnonymously(auth);
+                    }
+                } catch (authErr) {
+                    console.warn("Aviso na autenticação anónima:", authErr);
                 }
 
-                if (!cred || !cred.user) return;
-
                 window._cloudSync.db = db;
-                window._cloudSync.user = cred.user;
+                window._cloudSync.user = cred ? cred.user : null;
                 window._cloudSync.ready = true;
+
+                const sucessoInicial = await window._cloudSync.pullAllNow();
+                if (!sucessoInicial) return;
 
                 if (badge) {
                     badge.innerHTML = "&#9729; Sincronizado em Tempo Real";
@@ -1283,11 +1287,7 @@
                 }
                 ocultarErroNuvem();
 
-                // Sincronização inicial imediata (funde PC e telemóvel logo ao abrir)
-                await window._cloudSync.pullAllNow();
-
-                // Escuta em tempo real do documento mestre das tarefas
-                const masterRef = doc(db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                const masterRef = doc(db, "fabrica_todos_v4", "unico");
                 onSnapshot(masterRef, (docSnap) => {
                     if (docSnap.exists() && docSnap.data().itemsJson) {
                         try {
@@ -1302,8 +1302,7 @@
                     mostrarErroNuvem(err.message || String(err));
                 });
 
-                // Escuta em tempo real do catálogo de referências
-                const catCol = collection(db, "artifacts", appId, "public", "data", "catalogo_itens");
+                const catCol = collection(db, "fabrica_catalogo_v4");
                 onSnapshot(catCol, (snapshot) => {
                     const lista = [];
                     snapshot.forEach((docSnap) => {
@@ -1342,6 +1341,7 @@
             }
         }
 
+        window._iniciarNuvem = iniciarNuvem;
         iniciarNuvem();
     </script>
 
@@ -1507,7 +1507,6 @@
             try {
                 localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
             } catch (e) {
-                // Se o localStorage local estiver cheio por excesso de imagens, guarda sem fotos localmente (a nuvem guarda todas as fotos!)
                 try {
                     const semFotos = catalogoRefs.map(r => ({ ...r, photo: "" }));
                     localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(semFotos));
@@ -1691,10 +1690,10 @@
                 if (ok) {
                     mostrarToast(`Referência ${code} guardada e sincronizada!`);
                 } else {
-                    mostrarToast(`Referência ${code} guardada neste dispositivo.`);
+                    mostrarToast(`Erro na nuvem: ${window._ultimoErroNuvem || "verifica permissões"}`);
                 }
             } else {
-                mostrarToast(`Referência ${code} guardada!`);
+                mostrarToast(`Referência ${code} guardada neste dispositivo.`);
             }
         }
 
@@ -2752,14 +2751,23 @@
 
         async function forcarSincronizacaoManual() {
             if (!window._cloudSync || !window._cloudSync.ready) {
-                mostrarToast("A nuvem ainda não está ligada. Verifica o aviso a vermelho.");
-                return;
+                if (typeof window._iniciarNuvem === "function") {
+                    await window._iniciarNuvem();
+                }
+                if (!window._cloudSync || !window._cloudSync.ready) {
+                    mostrarToast("Erro na nuvem: " + (window._ultimoErroNuvem || "sem ligação"));
+                    return;
+                }
             }
             mostrarToast("A sincronizar notas e referências...");
-            await window._cloudSync.saveAllTodos(todosLista);
-            await window._cloudSync.saveCatalog(catalogoRefs);
-            await window._cloudSync.pullAllNow();
-            mostrarToast("Tudo sincronizado com sucesso!");
+            const ok1 = await window._cloudSync.saveAllTodos(todosLista);
+            const ok2 = await window._cloudSync.saveCatalog(catalogoRefs);
+            const ok3 = await window._cloudSync.pullAllNow();
+            if (ok1 && ok2 && ok3) {
+                mostrarToast("Sincronizado! Notas e referências atualizadas.");
+            } else {
+                mostrarToast("Erro na nuvem: " + (window._ultimoErroNuvem || "verifica as regras do Firestore"));
+            }
         }
 
         function formatarDataHoraAtual() {
