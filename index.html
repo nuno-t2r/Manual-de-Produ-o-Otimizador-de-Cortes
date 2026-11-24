@@ -259,9 +259,10 @@
                             1. Material & Catálogo de Referências
                         </h2>
                         <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="exportarCatalogo()" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">Exportar (.json)</button>
+                            <button type="button" onclick="novoMaterialFormulario()" class="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold cursor-pointer">+ Nova Ref.</button>
+                            <button type="button" onclick="exportarCatalogo()" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">Exportar</button>
                             <label class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">
-                                Importar (.json)
+                                Importar
                                 <input type="file" accept=".json" onchange="importarCatalogo(event)" class="hidden">
                             </label>
                         </div>
@@ -350,7 +351,7 @@
                     <!-- Galeria Rápida de Materiais Guardados no Catálogo -->
                     <div id="catalogo-galeria-wrapper" class="pt-2 border-t border-slate-100">
                         <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Catálogo Rápido (clica para selecionar):</span>
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Catálogo Rápido (<span id="catalogo-total-count">0</span> guardadas - clica para selecionar):</span>
                         </div>
                         <div id="catalogo-galeria-grid" class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar"></div>
                     </div>
@@ -744,7 +745,7 @@
                     <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
                         <p>&#8226; Identificar, contabilizar e comparar com a fatura. <strong>Avisar a Beatriz</strong> caso tenha vindo menos material do que o faturado.</p>
                         <p><strong>Passos para dar baixa:</strong><br>
-                        1. <code class="font-mono bg-slate-100 px-1 rounded">Produção / Requisição de Madeiras</code> &rarr; <kbd class="px-1 py-0.5 bg-slate-100 border rounded">Ctrl + F</kbd> e inserir ref. (ex: L3031, M9001, F861) em datas anteriores.<br>
+                        1. <code class="font-mono bg-slate-100 px-1 rounded">Produção / Requisição de Madeiras</code> &rarr; <kbd class="px-1.5 py-0.5 bg-slate-100 border rounded">Ctrl + F</kbd> e inserir ref. (ex: L3031, M9001, F861) em datas anteriores.<br>
                         2. Carregar no <strong>Select</strong> &rarr; Verificar se Qtd está a 0 &rarr; Carregar no <strong>Select</strong> &rarr; Inserir Qtd, selecionar unidade (m², kg, lts) &rarr; <strong>Update</strong>.<br>
                         3. Escrever na folha a <strong>vermelho</strong> se está feito, assinar a fatura e pôr a data.</p>
                         <div class="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-950">
@@ -1013,7 +1014,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDocs, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const badge = document.getElementById("cloud-sync-badge");
         const errHelp = document.getElementById("cloud-error-help");
@@ -1045,6 +1046,19 @@
             if (errHelp) errHelp.classList.add("hidden");
         }
 
+        function normalizarListaTodos(rawList) {
+            if (!Array.isArray(rawList)) return [];
+            return rawList.map(d => ({
+                id: Number(d.id) || Date.now(),
+                texto: String(d.texto || ""),
+                criadoEm: String(d.criadoEm || ""),
+                feito: Boolean(d.feito),
+                feitoEm: d.feitoEm || null,
+                notas: Array.isArray(d.notas) ? d.notas : [],
+                updatedAt: Number(d.updatedAt) || 0
+            }));
+        }
+
         window._cloudSync = {
             ready: false,
             db: null,
@@ -1052,21 +1066,95 @@
             saveTodo: async function(item) {
                 if (!this.ready || !this.user || !this.db) return false;
                 try {
-                    const ref = doc(this.db, "artifacts", appId, "public", "data", "todos_fabrica", String(item.id));
-                    await setDoc(ref, {
+                    const listaCompleta = Array.isArray(window._todosAtuais) ? window._todosAtuais : [item];
+                    const masterRef = doc(this.db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                    await setDoc(masterRef, {
+                        itemsJson: JSON.stringify(listaCompleta),
+                        updatedAt: Date.now()
+                    }, { merge: true });
+
+                    const itemRef = doc(this.db, "artifacts", appId, "public", "data", "todos_fabrica", String(item.id));
+                    await setDoc(itemRef, {
                         id: item.id,
                         texto: item.texto || "",
                         criadoEm: item.criadoEm || "",
                         feito: Boolean(item.feito),
                         feitoEm: item.feitoEm || null,
                         notasJson: JSON.stringify(Array.isArray(item.notas) ? item.notas : []),
-                        updatedAt: Date.now()
+                        updatedAt: item.updatedAt || Date.now()
                     }, { merge: true });
+
                     ocultarErroNuvem();
                     return true;
                 } catch (e) {
                     console.error("Erro ao gravar tarefa na nuvem:", e);
                     mostrarErroNuvem(e.message || String(e));
+                    return false;
+                }
+            },
+            saveAllTodos: async function(listaCompleta) {
+                if (!this.ready || !this.user || !this.db) return false;
+                try {
+                    const itens = Array.isArray(listaCompleta) ? listaCompleta : [];
+                    const masterRef = doc(this.db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                    await setDoc(masterRef, {
+                        itemsJson: JSON.stringify(itens),
+                        updatedAt: Date.now()
+                    }, { merge: true });
+
+                    for (const item of itens) {
+                        const itemRef = doc(this.db, "artifacts", appId, "public", "data", "todos_fabrica", String(item.id));
+                        await setDoc(itemRef, {
+                            id: item.id,
+                            texto: item.texto || "",
+                            criadoEm: item.criadoEm || "",
+                            feito: Boolean(item.feito),
+                            feitoEm: item.feitoEm || null,
+                            notasJson: JSON.stringify(Array.isArray(item.notas) ? item.notas : []),
+                            updatedAt: item.updatedAt || Date.now()
+                        }, { merge: true });
+                    }
+                    ocultarErroNuvem();
+                    return true;
+                } catch (e) {
+                    console.error("Erro ao gravar todas as tarefas:", e);
+                    mostrarErroNuvem(e.message || String(e));
+                    return false;
+                }
+            },
+            saveCatalogItem: async function(registo) {
+                if (!this.ready || !this.user || !this.db || !registo || !registo.code) return false;
+                try {
+                    const docId = String(registo.code).trim().toUpperCase();
+                    const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_itens", docId);
+                    await setDoc(ref, {
+                        code: docId,
+                        desc: registo.desc || docId,
+                        material: registo.material || "Melamina",
+                        l: Number(registo.l) || 2850,
+                        w: Number(registo.w) || 2100,
+                        grain: registo.grain || "sem",
+                        photo: registo.photo || "",
+                        deleted: false,
+                        updatedAt: Date.now()
+                    }, { merge: true });
+                    ocultarErroNuvem();
+                    return true;
+                } catch (e) {
+                    console.error("Erro ao gravar item do catálogo:", e);
+                    mostrarErroNuvem(e.message || String(e));
+                    return false;
+                }
+            },
+            deleteCatalogItem: async function(code) {
+                if (!this.ready || !this.user || !this.db || !code) return false;
+                try {
+                    const docId = String(code).trim().toUpperCase();
+                    const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_itens", docId);
+                    await setDoc(ref, { deleted: true, photo: "", updatedAt: Date.now() }, { merge: true });
+                    return true;
+                } catch (e) {
+                    console.error("Erro ao apagar item do catálogo:", e);
                     return false;
                 }
             },
@@ -1077,27 +1165,14 @@
                     const idsAtuais = new Set(itens.map(r => String(r.code).trim().toUpperCase()));
 
                     for (const item of itens) {
-                        const docId = String(item.code).trim().toUpperCase();
-                        if (!docId) continue;
-                        const ref = doc(this.db, "artifacts", appId, "public", "data", "catalogo_itens", docId);
-                        await setDoc(ref, {
-                            code: docId,
-                            desc: item.desc || docId,
-                            material: item.material || "Melamina",
-                            l: Number(item.l) || 2850,
-                            w: Number(item.w) || 2100,
-                            grain: item.grain || "sem",
-                            photo: item.photo || "",
-                            deleted: false,
-                            updatedAt: Date.now()
-                        }, { merge: true });
+                        await this.saveCatalogItem(item);
                     }
 
                     const colRef = collection(this.db, "artifacts", appId, "public", "data", "catalogo_itens");
                     const snap = await getDocs(colRef);
                     for (const dSnap of snap.docs) {
                         if (!idsAtuais.has(dSnap.id) && !dSnap.data().deleted) {
-                            await setDoc(dSnap.ref, { deleted: true, updatedAt: Date.now() }, { merge: true });
+                            await setDoc(dSnap.ref, { deleted: true, photo: "", updatedAt: Date.now() }, { merge: true });
                         }
                     }
 
@@ -1106,18 +1181,27 @@
                 } catch (e) {
                     console.error("Erro ao gravar catálogo na nuvem:", e);
                     mostrarErroNuvem(e.message || String(e));
-                    if (typeof window.mostrarToast === "function") {
-                        window.mostrarToast("Aviso: Referência guardada só no dispositivo (ver erro de nuvem na To-Do List).");
-                    }
                     return false;
                 }
             },
             pullAllNow: async function() {
                 if (!this.ready || !this.user || !this.db) return;
                 try {
+                    const mapaRemoto = new Map();
+
+                    // 1. Ler documento mestre das tarefas
+                    const masterRef = doc(this.db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                    const masterSnap = await getDoc(masterRef);
+                    if (masterSnap.exists() && masterSnap.data().itemsJson) {
+                        try {
+                            const arr = normalizarListaTodos(JSON.parse(masterSnap.data().itemsJson));
+                            arr.forEach(item => mapaRemoto.set(String(item.id), item));
+                        } catch (e) {}
+                    }
+
+                    // 2. Ler também a coleção individual para nunca perder nada criado anteriormente
                     const todosCol = collection(this.db, "artifacts", appId, "public", "data", "todos_fabrica");
                     const snap = await getDocs(todosCol);
-                    const remotos = [];
                     snap.forEach((docSnap) => {
                         const d = docSnap.data();
                         let notasParsed = [];
@@ -1126,18 +1210,26 @@
                         } else if (Array.isArray(d.notas)) {
                             notasParsed = d.notas;
                         }
-                        remotos.push({
-                            id: d.id || Number(docSnap.id),
+                        const item = {
+                            id: Number(d.id) || Number(docSnap.id),
                             texto: d.texto || "",
                             criadoEm: d.criadoEm || "",
                             feito: Boolean(d.feito),
                             feitoEm: d.feitoEm || null,
-                            notas: notasParsed
-                        });
+                            notas: notasParsed,
+                            updatedAt: Number(d.updatedAt) || 0
+                        };
+                        const k = String(item.id);
+                        if (!mapaRemoto.has(k) || (item.notas.length > (mapaRemoto.get(k).notas || []).length)) {
+                            mapaRemoto.set(k, item);
+                        }
                     });
+
                     if (typeof window.fundirTodosComNuvem === "function") {
-                        window.fundirTodosComNuvem(remotos);
+                        window.fundirTodosComNuvem(Array.from(mapaRemoto.values()));
                     }
+
+                    // 3. Ler catálogo de referências
                     const catCol = collection(this.db, "artifacts", appId, "public", "data", "catalogo_itens");
                     const catSnap = await getDocs(catCol);
                     const listaCat = [];
@@ -1191,36 +1283,26 @@
                 }
                 ocultarErroNuvem();
 
-                const todosCol = collection(db, "artifacts", appId, "public", "data", "todos_fabrica");
-                onSnapshot(todosCol, (snapshot) => {
-                    const remotos = [];
-                    snapshot.forEach((docSnap) => {
-                        const d = docSnap.data();
-                        let notasParsed = [];
-                        if (d.notasJson) {
-                            try { notasParsed = JSON.parse(d.notasJson); } catch (e) {}
-                        } else if (Array.isArray(d.notas)) {
-                            notasParsed = d.notas;
-                        }
-                        remotos.push({
-                            id: d.id || Number(docSnap.id),
-                            texto: d.texto || "",
-                            criadoEm: d.criadoEm || "",
-                            feito: Boolean(d.feito),
-                            feitoEm: d.feitoEm || null,
-                            notas: notasParsed
-                        });
-                    });
+                // Sincronização inicial imediata (funde PC e telemóvel logo ao abrir)
+                await window._cloudSync.pullAllNow();
 
-                    if (typeof window.fundirTodosComNuvem === "function") {
-                        window.fundirTodosComNuvem(remotos);
+                // Escuta em tempo real do documento mestre das tarefas
+                const masterRef = doc(db, "artifacts", appId, "public", "data", "todos_master", "unico");
+                onSnapshot(masterRef, (docSnap) => {
+                    if (docSnap.exists() && docSnap.data().itemsJson) {
+                        try {
+                            const remotos = normalizarListaTodos(JSON.parse(docSnap.data().itemsJson));
+                            if (typeof window.fundirTodosComNuvem === "function") {
+                                window.fundirTodosComNuvem(remotos);
+                            }
+                        } catch (e) {}
                     }
                 }, (err) => {
-                    console.error("Erro na escuta das tarefas:", err);
+                    console.error("Erro na escuta master das tarefas:", err);
                     mostrarErroNuvem(err.message || String(err));
                 });
 
-                // A nuvem é a única fonte da verdade para o catálogo (inclui lista vazia se tudo foi apagado)
+                // Escuta em tempo real do catálogo de referências
                 const catCol = collection(db, "artifacts", appId, "public", "data", "catalogo_itens");
                 onSnapshot(catCol, (snapshot) => {
                     const lista = [];
@@ -1404,7 +1486,6 @@
 
         function carregarCatalogo() {
             try {
-                // Limpar chaves antigas v1 e v2 que continham materiais pré-carregados
                 localStorage.removeItem("mc_fabrica_catalogo_v1");
                 localStorage.removeItem("mc_fabrica_catalogo_v2");
 
@@ -1421,26 +1502,45 @@
             atualizarDatalistCatalogo();
         }
 
-        function salvarCatalogoLocal() {
+        function guardarLocalStorageCatalogoSeguro() {
             window._catalogoAtual = catalogoRefs;
             try {
                 localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
-            } catch (e) {}
-            atualizarDatalistCatalogo();
-            if (window._cloudSync && window._cloudSync.ready) {
-                window._cloudSync.saveCatalog(catalogoRefs);
+            } catch (e) {
+                // Se o localStorage local estiver cheio por excesso de imagens, guarda sem fotos localmente (a nuvem guarda todas as fotos!)
+                try {
+                    const semFotos = catalogoRefs.map(r => ({ ...r, photo: "" }));
+                    localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(semFotos));
+                } catch (e2) {}
             }
+            atualizarDatalistCatalogo();
         }
 
         window.aplicarCatalogoDaNuvem = function(lista) {
             catalogoRefs = Array.isArray(lista) ? lista : [];
-            window._catalogoAtual = catalogoRefs;
-            try {
-                localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalogoRefs));
-            } catch (e) {}
-            atualizarDatalistCatalogo();
-            aoEscreverReferencia();
+            guardarLocalStorageCatalogoSeguro();
+            const codeAtual = (document.getElementById("opt-ref-code").value || "").trim().toUpperCase();
+            if (codeAtual) {
+                const enc = catalogoRefs.find(r => r.code.toUpperCase() === codeAtual);
+                const btnDel = document.getElementById("btn-del-ref");
+                if (btnDel) {
+                    if (enc) btnDel.classList.remove("hidden");
+                    else btnDel.classList.add("hidden");
+                }
+            }
         };
+
+        function novoMaterialFormulario() {
+            document.getElementById("opt-ref-code").value = "";
+            document.getElementById("opt-ref-desc").value = "";
+            const inpFoto = document.getElementById("opt-ref-photo-input");
+            if (inpFoto) inpFoto.value = "";
+            atualizarPreviewFotoMaterial("");
+            const btnDel = document.getElementById("btn-del-ref");
+            if (btnDel) btnDel.classList.add("hidden");
+            document.getElementById("opt-ref-code").focus();
+            executarOtimizacao(false);
+        }
 
         function atualizarPreviewFotoMaterial(dataUrl) {
             fotoMaterialAtual = dataUrl || "";
@@ -1465,14 +1565,15 @@
         }
 
         function aoCarregarFotoMaterial(event) {
-            const file = event.target.files && event.target.files[0];
+            const inputEl = event.target;
+            const file = inputEl.files && inputEl.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    const maxDim = 320;
+                    const maxDim = 220;
                     let w = img.width;
                     let h = img.height;
                     if (w > maxDim || h > maxDim) {
@@ -1489,10 +1590,11 @@
                     canvas.height = h;
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, w, h);
-                    const comprimida = canvas.toDataURL("image/jpeg", 0.72);
+                    const comprimida = canvas.toDataURL("image/jpeg", 0.65);
                     atualizarPreviewFotoMaterial(comprimida);
                     executarOtimizacao(false);
-                    mostrarToast("Foto carregada! Clica em 'Guardar Ref.' para gravar no catálogo.");
+                    inputEl.value = "";
+                    mostrarToast("Foto carregada! Clica em 'Guardar Ref. no Catálogo'.");
                 };
                 img.src = e.target.result;
             };
@@ -1513,6 +1615,9 @@
                     `<option value="${escapeHtml(r.code)}">${escapeHtml(r.desc)} (${r.material} ${r.l}×${r.w})</option>`
                 ).join("");
             }
+
+            const countSpan = document.getElementById("catalogo-total-count");
+            if (countSpan) countSpan.textContent = catalogoRefs.length;
 
             const gal = document.getElementById("catalogo-galeria-grid");
             if (gal) {
@@ -1556,10 +1661,11 @@
             }
         }
 
-        function guardarReferenciaCatalogo() {
+        async function guardarReferenciaCatalogo() {
             const code = (document.getElementById("opt-ref-code").value || "").trim().toUpperCase();
             if (!code) {
                 mostrarToast("Escreve primeiro o código da referência.");
+                document.getElementById("opt-ref-code").focus();
                 return;
             }
             const desc = (document.getElementById("opt-ref-desc").value || "").trim() || code;
@@ -1575,22 +1681,32 @@
             } else {
                 catalogoRefs.push(registo);
             }
-            salvarCatalogoLocal();
+
+            guardarLocalStorageCatalogoSeguro();
             const btnDel = document.getElementById("btn-del-ref");
             if (btnDel) btnDel.classList.remove("hidden");
-            mostrarToast(`Referência ${code} guardada e sincronizada!`);
+
+            if (window._cloudSync && window._cloudSync.ready) {
+                const ok = await window._cloudSync.saveCatalogItem(registo);
+                if (ok) {
+                    mostrarToast(`Referência ${code} guardada e sincronizada!`);
+                } else {
+                    mostrarToast(`Referência ${code} guardada neste dispositivo.`);
+                }
+            } else {
+                mostrarToast(`Referência ${code} guardada!`);
+            }
         }
 
-        function eliminarReferenciaCatalogo() {
+        async function eliminarReferenciaCatalogo() {
             const code = (document.getElementById("opt-ref-code").value || "").trim().toUpperCase();
             if (!code) return;
             catalogoRefs = catalogoRefs.filter(r => r.code.toUpperCase() !== code);
-            document.getElementById("opt-ref-code").value = "";
-            document.getElementById("opt-ref-desc").value = "";
-            atualizarPreviewFotoMaterial("");
-            const btnDel = document.getElementById("btn-del-ref");
-            if (btnDel) btnDel.classList.add("hidden");
-            salvarCatalogoLocal();
+            novoMaterialFormulario();
+            guardarLocalStorageCatalogoSeguro();
+            if (window._cloudSync && window._cloudSync.ready) {
+                await window._cloudSync.deleteCatalogItem(code);
+            }
             mostrarToast(`Referência ${code} removida do catálogo.`);
         }
 
@@ -1613,7 +1729,10 @@
                     const dados = JSON.parse(e.target.result);
                     if (Array.isArray(dados)) {
                         catalogoRefs = dados;
-                        salvarCatalogoLocal();
+                        guardarLocalStorageCatalogoSeguro();
+                        if (window._cloudSync && window._cloudSync.ready) {
+                            window._cloudSync.saveCatalog(catalogoRefs);
+                        }
                         mostrarToast("Catálogo importado com sucesso!");
                     }
                 } catch (err) {
@@ -2592,7 +2711,7 @@
 
         window.fundirTodosComNuvem = function(remotos) {
             const mapa = new Map();
-            const locaisParaSubir = [];
+            let houveNovosLocaisParaSubir = false;
 
             remotos.forEach(r => {
                 mapa.set(String(r.id), r);
@@ -2602,15 +2721,17 @@
                 const key = String(local.id);
                 if (!mapa.has(key)) {
                     mapa.set(key, local);
-                    locaisParaSubir.push(local);
+                    houveNovosLocaisParaSubir = true;
                 } else {
                     const rem = mapa.get(key);
                     const notasLocal = Array.isArray(local.notas) ? local.notas : [];
                     const notasRem = Array.isArray(rem.notas) ? rem.notas : [];
+                    const updLocal = Number(local.updatedAt) || 0;
+                    const updRem = Number(rem.updatedAt) || 0;
 
-                    if (notasLocal.length > notasRem.length) {
+                    if (notasLocal.length > notasRem.length || updLocal > updRem) {
                         mapa.set(key, local);
-                        locaisParaSubir.push(local);
+                        houveNovosLocaisParaSubir = true;
                     }
                 }
             });
@@ -2624,8 +2745,8 @@
             } catch (e) {}
             renderizarTodos();
 
-            if (locaisParaSubir.length > 0 && window._cloudSync && window._cloudSync.ready) {
-                locaisParaSubir.forEach(item => window._cloudSync.saveTodo(item));
+            if (houveNovosLocaisParaSubir && window._cloudSync && window._cloudSync.ready) {
+                window._cloudSync.saveAllTodos(todosLista);
             }
         };
 
@@ -2635,9 +2756,7 @@
                 return;
             }
             mostrarToast("A sincronizar notas e referências...");
-            for (const item of todosLista) {
-                await window._cloudSync.saveTodo(item);
-            }
+            await window._cloudSync.saveAllTodos(todosLista);
             await window._cloudSync.saveCatalog(catalogoRefs);
             await window._cloudSync.pullAllNow();
             mostrarToast("Tudo sincronizado com sucesso!");
@@ -2663,13 +2782,15 @@
                 return;
             }
 
+            const agoraMs = Date.now();
             const novaTarefa = {
-                id: Date.now() + Math.floor(Math.random() * 1000),
+                id: agoraMs + Math.floor(Math.random() * 1000),
                 texto,
                 criadoEm: formatarDataHoraAtual(),
                 feito: false,
                 feitoEm: null,
-                notas: []
+                notas: [],
+                updatedAt: agoraMs
             };
 
             todosLista.unshift(novaTarefa);
@@ -2699,6 +2820,7 @@
                 texto: textoNota,
                 dataHora: formatarDataHoraAtual()
             });
+            item.updatedAt = Date.now();
 
             salvarTodos(item);
             mostrarToast("Atualização gravada na nota!");
@@ -2709,6 +2831,7 @@
             if (!item) return;
             item.feito = !item.feito;
             item.feitoEm = item.feito ? formatarDataHoraAtual() : null;
+            item.updatedAt = Date.now();
             salvarTodos(item);
         }
 
