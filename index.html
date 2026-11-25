@@ -102,7 +102,7 @@
                 <p><strong>2. Como guardar alterações no GitHub Pages:</strong><br>
                 Depois de colares ou editares o código, clica em <strong>Commit changes...</strong> e aguarda cerca de 1 minuto até o GitHub Pages atualizar o site.</p>
                 <p><strong>3. Sincronização na Nuvem Ativa (idunaproject):</strong><br>
-                A tua <strong>To-Do List</strong> e o <strong>Catálogo de Referências</strong> (incluindo fotos) estão ligados ao teu Firebase e sincronizam automaticamente entre PC, telemóvel e tablet.</p>
+                A tua <strong>To-Do List</strong>, as <strong>Rotinas Periódicas</strong> e o <strong>Catálogo de Referências</strong> (incluindo fotos) estão ligados ao teu Firebase e sincronizam automaticamente entre PC, telemóvel e tablet.</p>
             </div>
             <div class="flex justify-end pt-2">
                 <button type="button" onclick="toggleModal('github-modal', false)" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Fechar</button>
@@ -706,36 +706,22 @@
                     </div>
                 </section>
 
-                <!-- 4. Lista de Coisas a Fazer (Rotinas Periódicas) -->
+                <!-- 4. Lista de Coisas a Fazer (Rotinas Periódicas Interativas com Reinício por Ciclo) -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
                             <span class="w-2 h-5 bg-emerald-600 rounded-full inline-block"></span>
                             Rotinas Periódicas (Lista de Coisas a Fazer)
                         </h2>
+                        <span id="rotinas-progress-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-extrabold whitespace-nowrap">
+                            0 / 9
+                        </span>
                     </div>
-                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
-                        <div class="p-2 bg-rose-50 border border-rose-200 rounded-xl">
-                            <span class="font-extrabold text-rose-900 uppercase text-[10px] block">Diariamente</span>
-                            <p class="font-semibold text-slate-900">&#8226; Verificar todas as notas em falta.</p>
-                        </div>
-                        <div class="p-2.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
-                            <span class="font-extrabold text-blue-900 uppercase text-[10px] block">Semanalmente</span>
-                            <p>&#8226; Imprimir encomendas.</p>
-                            <p>&#8226; Tratar das matérias-primas (cálculo e requisições).</p>
-                            <p>&#8226; Criar tabelas nos Sheets.</p>
-                            <p>&#8226; Dar baixa do material que chega (faturas - colas, etc.).</p>
-                            <p>&#8226; Dar baixa na lista do material terminado e anexar as ordens de fabrico.</p>
-                            <p>&#8226; Enviar um mail ao <strong>David</strong> a pedir as ordens de fabrico das encomendas a fazer.</p>
-                        </div>
-                        <div class="p-2 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
-                            <span class="font-extrabold text-amber-900 uppercase text-[10px] block">Semanalmente ou Quinzenalmente</span>
-                            <p>&#8226; Descrição de acabamentos (<strong>Fernando Inf.</strong>).</p>
-                        </div>
-                        <div class="p-2 bg-slate-100 border border-slate-200 rounded-xl space-y-1">
-                            <span class="font-extrabold text-slate-800 uppercase text-[10px] block">Quinzenalmente ou Mensalmente</span>
-                            <p>&#8226; Dar baixa do material de corte (ex: <strong>Lucas</strong>) &rarr; <em>Entradas e Saídas Diversas</em>.</p>
-                        </div>
+                    <p class="text-[11px] text-slate-500 leading-snug">
+                        Marca o visto ao concluir. O visto reinicia automaticamente no ciclo seguinte (dia, semana, quinzena ou mês), mantendo a data do último check.
+                    </p>
+                    <div id="rotinas-periodicas-container" class="space-y-2.5 text-xs text-slate-700 leading-relaxed">
+                        <!-- Renderizado dinamicamente via JS -->
                     </div>
                 </section>
 
@@ -1278,6 +1264,21 @@
                     return false;
                 }
             },
+            saveRotinas: async function(rotinasObj) {
+                if (!this.ready || !this.db) return false;
+                try {
+                    const ref = doc(this.db, "fabrica_rotinas_v1", "unico");
+                    await setDoc(ref, {
+                        rotinasJson: JSON.stringify(rotinasObj || {}),
+                        updatedAt: Date.now()
+                    }, { merge: true });
+                    ocultarErroNuvem();
+                    return true;
+                } catch (e) {
+                    console.error("Erro ao gravar rotinas periódicas:", e);
+                    return false;
+                }
+            },
             saveCatalogItem: async function(registo) {
                 if (!this.ready || !this.db || !registo || !registo.code) return false;
                 try {
@@ -1383,6 +1384,17 @@
                         window.fundirTodosComNuvem(Array.from(mapaRemoto.values()));
                     }
 
+                    const rotinasRef = doc(this.db, "fabrica_rotinas_v1", "unico");
+                    const rotinasSnap = await getDoc(rotinasRef);
+                    if (rotinasSnap.exists() && rotinasSnap.data().rotinasJson) {
+                        try {
+                            const remRot = JSON.parse(rotinasSnap.data().rotinasJson);
+                            if (typeof window.fundirRotinasComNuvem === "function") {
+                                window.fundirRotinasComNuvem(remRot);
+                            }
+                        } catch (e) {}
+                    }
+
                     const catCol = collection(this.db, "fabrica_catalogo_v4");
                     const catSnap = await getDocs(catCol);
                     const listaCat = [];
@@ -1458,6 +1470,20 @@
                     mostrarErroNuvem(err.message || String(err));
                 });
 
+                const rotinasRef = doc(db, "fabrica_rotinas_v1", "unico");
+                onSnapshot(rotinasRef, (docSnap) => {
+                    if (docSnap.exists() && docSnap.data().rotinasJson) {
+                        try {
+                            const remRot = JSON.parse(docSnap.data().rotinasJson);
+                            if (typeof window.fundirRotinasComNuvem === "function") {
+                                window.fundirRotinasComNuvem(remRot);
+                            }
+                        } catch (e) {}
+                    }
+                }, (err) => {
+                    console.error("Erro na escuta das rotinas periódicas:", err);
+                });
+
                 const catCol = collection(db, "fabrica_catalogo_v4");
                 onSnapshot(catCol, (snapshot) => {
                     const lista = [];
@@ -1507,6 +1533,7 @@
         const STORAGE_KEY_SESSION = "mc_manual_unlocked_v1";
         const STORAGE_KEY_CATALOG = "mc_fabrica_catalogo_v3";
         const STORAGE_KEY_TODOS = "mc_fabrica_todos_v1";
+        const STORAGE_KEY_ROTINAS = "mc_fabrica_rotinas_v1";
 
         function verificarPin() {
             const inputEl = document.getElementById("pin-input");
@@ -1632,6 +1659,215 @@
             const cont = document.getElementById(containerId);
             if (!cont) return;
             cont.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+
+        // =================================================================
+        // ROTINAS PERIÓDICAS (OPÇÃO A: REINÍCIO AUTOMÁTICO POR CICLO + DATA)
+        // =================================================================
+        const ROTINAS_DEFINICAO = [
+            {
+                grupo: "Diariamente",
+                ciclo: "diario",
+                corBox: "bg-rose-50/80 border-rose-200",
+                corTitulo: "text-rose-900",
+                itens: [
+                    { id: "rot_diaria_notas", html: "<strong>Verificar todas as notas em falta.</strong>" }
+                ]
+            },
+            {
+                grupo: "Semanalmente",
+                ciclo: "semanal",
+                corBox: "bg-blue-50/70 border-blue-200",
+                corTitulo: "text-blue-900",
+                itens: [
+                    { id: "rot_sem_imprimir", html: "Imprimir encomendas." },
+                    { id: "rot_sem_mp", html: "Tratar das matérias-primas (cálculo e requisições)." },
+                    { id: "rot_sem_sheets", html: "Criar tabelas nos Sheets." },
+                    { id: "rot_sem_baixa_chega", html: "Dar baixa do material que chega (faturas - colas, etc.)." },
+                    { id: "rot_sem_baixa_terminado", html: "Dar baixa na lista do material terminado e anexar as ordens de fabrico." },
+                    { id: "rot_sem_mail_david", html: "Enviar um mail ao <strong>David</strong> a pedir as ordens de fabrico das encomendas a fazer." }
+                ]
+            },
+            {
+                grupo: "Semanalmente ou Quinzenalmente",
+                ciclo: "quinzenal",
+                corBox: "bg-amber-50/70 border-amber-200",
+                corTitulo: "text-amber-900",
+                itens: [
+                    { id: "rot_quinz_acabamentos", html: "Descrição de acabamentos (<strong>Fernando Inf.</strong>)." }
+                ]
+            },
+            {
+                grupo: "Quinzenalmente ou Mensalmente",
+                ciclo: "mensal",
+                corBox: "bg-slate-100 border-slate-200",
+                corTitulo: "text-slate-800",
+                itens: [
+                    { id: "rot_mensal_corte", html: "Dar baixa do material de corte (ex: <strong>Lucas</strong>) &rarr; <em>Entradas e Saídas Diversas</em>." }
+                ]
+            }
+        ];
+
+        let rotinasEstado = {};
+
+        function obterChaveCicloAtual(ciclo, dataRef) {
+            const d = dataRef ? new Date(dataRef) : new Date();
+            const ano = d.getFullYear();
+            const mes = String(d.getMonth() + 1).padStart(2, "0");
+            const dia = String(d.getDate()).padStart(2, "0");
+
+            if (ciclo === "diario") {
+                return `D-${ano}-${mes}-${dia}`;
+            }
+            if (ciclo === "semanal") {
+                // Semana ISO (segunda-feira a domingo)
+                const temp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                const dayNum = temp.getUTCDay() || 7;
+                temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
+                const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+                const weekNo = Math.ceil((((temp - yearStart) / 86400000) + 1) / 7);
+                return `S-${temp.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+            }
+            if (ciclo === "quinzenal") {
+                const q = d.getDate() <= 15 ? "Q1" : "Q2";
+                return `Q-${ano}-${mes}-${q}`;
+            }
+            // mensal
+            return `M-${ano}-${mes}`;
+        }
+
+        function carregarRotinas() {
+            try {
+                const guardado = localStorage.getItem(STORAGE_KEY_ROTINAS);
+                if (guardado) {
+                    const parsed = JSON.parse(guardado);
+                    if (parsed && typeof parsed === "object") {
+                        rotinasEstado = parsed;
+                    }
+                }
+            } catch (e) {}
+            renderizarRotinas();
+        }
+
+        function salvarRotinas() {
+            try {
+                localStorage.setItem(STORAGE_KEY_ROTINAS, JSON.stringify(rotinasEstado));
+            } catch (e) {}
+            renderizarRotinas();
+            if (window._cloudSync && window._cloudSync.ready) {
+                window._cloudSync.saveRotinas(rotinasEstado);
+            }
+        }
+
+        window.fundirRotinasComNuvem = function(remoto) {
+            if (!remoto || typeof remoto !== "object") return;
+            let alterou = false;
+            Object.keys(remoto).forEach(id => {
+                const remItem = remoto[id];
+                const locItem = rotinasEstado[id];
+                if (!locItem || (Number(remItem.updatedAt) || 0) > (Number(locItem.updatedAt) || 0)) {
+                    rotinasEstado[id] = remItem;
+                    alterou = true;
+                }
+            });
+            if (alterou) {
+                try {
+                    localStorage.setItem(STORAGE_KEY_ROTINAS, JSON.stringify(rotinasEstado));
+                } catch (e) {}
+                renderizarRotinas();
+            }
+        };
+
+        function alternarRotinaCheck(id, ciclo) {
+            const reg = rotinasEstado[id] || {};
+            const cicloAtual = obterChaveCicloAtual(ciclo);
+            const estaMarcadoNoCiclo = Boolean(reg.checked && reg.cycleKey === cicloAtual);
+
+            if (estaMarcadoNoCiclo) {
+                // Desmarcar no ciclo atual (restaura último check anterior se existir)
+                rotinasEstado[id] = {
+                    checked: false,
+                    cycleKey: "",
+                    lastCheckText: reg.prevLastCheckText || "",
+                    prevLastCheckText: "",
+                    updatedAt: Date.now()
+                };
+                salvarRotinas();
+                mostrarToast("Visto desmarcado.");
+            } else {
+                const agoraTexto = formatarDataHoraAtual();
+                rotinasEstado[id] = {
+                    checked: true,
+                    cycleKey: cicloAtual,
+                    lastCheckText: agoraTexto,
+                    prevLastCheckText: reg.lastCheckText || "",
+                    updatedAt: Date.now()
+                };
+                salvarRotinas();
+                mostrarToast("Rotina concluída e registada!");
+            }
+        }
+
+        function renderizarRotinas() {
+            const container = document.getElementById("rotinas-periodicas-container");
+            const badge = document.getElementById("rotinas-progress-badge");
+            if (!container) return;
+
+            let totalItens = 0;
+            let concluidosCiclo = 0;
+
+            const htmlGrupos = ROTINAS_DEFINICAO.map(grp => {
+                const cicloAtual = obterChaveCicloAtual(grp.ciclo);
+                const itensHtml = grp.itens.map(item => {
+                    totalItens++;
+                    const reg = rotinasEstado[item.id] || {};
+                    const marcadoNoCiclo = Boolean(reg.checked && reg.cycleKey === cicloAtual);
+                    if (marcadoNoCiclo) concluidosCiclo++;
+
+                    const textoClass = marcadoNoCiclo
+                        ? "line-through text-slate-500 font-medium"
+                        : "text-slate-900 font-medium";
+
+                    let infoDataHtml = "";
+                    if (marcadoNoCiclo && reg.lastCheckText) {
+                        infoDataHtml = `<span class="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">&#10003; Feito em: ${escapeHtml(reg.lastCheckText)}</span>`;
+                    } else if (reg.lastCheckText) {
+                        infoDataHtml = `<span class="inline-flex items-center gap-1 mt-0.5 text-[10px] font-semibold text-slate-500 bg-white/80 border border-slate-200 px-1.5 py-0.5 rounded">&#128337; Último check: ${escapeHtml(reg.lastCheckText)}</span>`;
+                    }
+
+                    return `
+                        <label class="flex items-start gap-2.5 p-1.5 rounded-lg hover:bg-white/70 transition cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                ${marcadoNoCiclo ? "checked" : ""}
+                                onchange="alternarRotinaCheck('${item.id}', '${grp.ciclo}')"
+                                class="mt-0.5 w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                            >
+                            <div class="flex-1 leading-snug">
+                                <span class="block ${textoClass}">${item.html}</span>
+                                ${infoDataHtml}
+                            </div>
+                        </label>
+                    `;
+                }).join("");
+
+                return `
+                    <div class="p-2.5 ${grp.corBox} border rounded-xl space-y-1">
+                        <span class="font-extrabold ${grp.corTitulo} uppercase text-[10px] tracking-wide block mb-1">${grp.grupo}</span>
+                        <div class="space-y-1">
+                            ${itensHtml}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            container.innerHTML = htmlGrupos;
+            if (badge) {
+                badge.textContent = `${concluidosCiclo} / ${totalItens} feitas`;
+                badge.className = concluidosCiclo === totalItens
+                    ? "px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold whitespace-nowrap"
+                    : "px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-extrabold whitespace-nowrap";
+            }
         }
 
         let catalogoRefs = [];
@@ -2915,12 +3151,13 @@
                     return;
                 }
             }
-            mostrarToast("A sincronizar notas e referências...");
+            mostrarToast("A sincronizar notas, rotinas e referências...");
             const ok1 = await window._cloudSync.saveAllTodos(todosLista);
             const ok2 = await window._cloudSync.saveCatalog(catalogoRefs);
-            const ok3 = await window._cloudSync.pullAllNow();
-            if (ok1 && ok2 && ok3) {
-                mostrarToast("Sincronizado! Notas e referências atualizadas.");
+            const ok3 = await window._cloudSync.saveRotinas(rotinasEstado);
+            const ok4 = await window._cloudSync.pullAllNow();
+            if (ok1 && ok2 && ok3 && ok4) {
+                mostrarToast("Sincronizado! Tudo atualizado.");
             } else {
                 mostrarToast("Erro na nuvem: " + (window._ultimoErroNuvem || "verifica as regras do Firestore"));
             }
@@ -3150,10 +3387,11 @@
 
             carregarCatalogo();
             carregarTodos();
+            carregarRotinas();
             aoMudarMaterial();
             atualizarPreviewPeca();
             executarOtimizacao(false);
         });
     </script>
 </body>
-</html>
+    </html>
