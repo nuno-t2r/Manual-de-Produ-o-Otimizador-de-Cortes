@@ -160,7 +160,7 @@
                             type="text"
                             id="search-input"
                             oninput="filtrarManual()"
-                            placeholder="Pesquisar no manual (ex: Bela, B111, 60+40, incisor...)"
+                            placeholder="Pesquisar no manual (ex: 01022026, N8V, David, incisor...)"
                             class="w-full bg-slate-800 text-white placeholder-slate-400 text-xs sm:text-sm rounded-xl pl-9 pr-8 py-2 border border-slate-700 focus:outline-none focus:border-blue-500 transition"
                         >
                         <button
@@ -622,7 +622,124 @@
                     </ul>
                 </section>
 
-                <!-- 2. Exequibilidades e Impressão de Listas -->
+                <!-- 2. Códigos de Referência Sage (Materiais & Colas) -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-amber-600 rounded-full inline-block"></span>
+                            Códigos de Referência Sage (Materiais & Colas)
+                        </h2>
+                    </div>
+                    <div class="grid grid-cols-1 gap-1.5 text-xs text-slate-700">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>Cola Transparente Orladora:</span>
+                            <code class="font-mono font-extrabold bg-amber-50 text-amber-950 border border-amber-200 px-2 py-0.5 rounded">01022026</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>Cola Rakoll Branca HPL:</span>
+                            <code class="font-mono font-extrabold bg-amber-50 text-amber-950 border border-amber-200 px-2 py-0.5 rounded">01022015</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>Cola Branca Orladora:</span>
+                            <code class="font-mono font-extrabold bg-amber-50 text-amber-950 border border-amber-200 px-2 py-0.5 rounded">01022025</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>Aglomerado Crú 19:</span>
+                            <code class="font-mono font-extrabold bg-slate-100 text-slate-900 px-2 py-0.5 rounded">01025044</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>Aglomerado 25 mm:</span>
+                            <code class="font-mono font-extrabold bg-slate-100 text-slate-900 px-2 py-0.5 rounded">01025045</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>MDF Crú 19 mm:</span>
+                            <code class="font-mono font-extrabold bg-slate-100 text-slate-900 px-2 py-0.5 rounded">01026104</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>MDF Crú 25 mm:</span>
+                            <code class="font-mono font-extrabold bg-slate-100 text-slate-900 px-2 py-0.5 rounded">01026096</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>MDF 50 mm:</span>
+                            <code class="font-mono font-extrabold bg-slate-100 text-slate-900 px-2 py-0.5 rounded">01026067</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>MDF Preto 19 mm:</span>
+                            <code class="font-mono font-extrabold bg-slate-900 text-white px-2 py-0.5 rounded">01026143</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>MDF Preto 25:</span>
+                            <code class="font-mono font-extrabold bg-slate-900 text-white px-2 py-0.5 rounded">01026116</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>Contraface:</span>
+                            <code class="font-mono font-extrabold bg-blue-50 text-blue-950 border border-blue-200 px-2 py-0.5 rounded">01032239</code>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                            <span>Fundo Isolante:</span>
+                            <code class="font-mono font-extrabold bg-slate-100 text-slate-900 px-2 py-0.5 rounded">01021143</code>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>HPL B111:</span>
+                            <code class="font-mono font-extrabold bg-blue-50 text-blue-950 border border-blue-200 px-2 py-0.5 rounded">01032280</code>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Fazer Descrição de Cada Acabamento (Sem Itens Consumo) -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-violet-600 rounded-full inline-block"></span>
+                            Descrição de Cada Acabamento (S/ Itens Consumo)
+                        </h2>
+                    </div>
+                    <div class="space-y-2.5 text-xs text-slate-700 leading-relaxed">
+                        <p><strong>Caminho:</strong><br>
+                        <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded font-semibold">Produção / Acabamento s/ itens consumo</code> &rarr; Carregar nos <strong>Acabamentos (N8V, NQS)</strong>.</p>
+                        <p><strong>Passos:</strong><br>
+                        1. Na <code class="font-mono bg-slate-100 px-1 rounded">(Ref Sage)</code> posso inserir as referências + usadas (<strong>CF, Aglomerado, Cola...</strong>), senão procurar nas requisições para ser + fácil ou ir à Estrutura de Artigo (<code class="font-mono bg-slate-100 px-1 rounded">Artigos / Est. Artigo</code>).<br>
+                        2. Clicar em <code class="font-mono font-bold">Insert</code> &rarr; <code class="font-mono font-bold">Validar</code>.</p>
+                        <div class="p-2.5 bg-rose-50 border border-rose-300 rounded-xl text-rose-950 font-semibold">
+                            &#9888; <strong>Atenção:</strong> Atualizar a página do <em>Acabamentos s/ item</em> para o acabamento desaparecer da lista!
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. Lista de Coisas a Fazer (Rotinas Periódicas) -->
+                <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-2 h-5 bg-emerald-600 rounded-full inline-block"></span>
+                            Rotinas Periódicas (Lista de Coisas a Fazer)
+                        </h2>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <div class="p-2 bg-rose-50 border border-rose-200 rounded-xl">
+                            <span class="font-extrabold text-rose-900 uppercase text-[10px] block">Diariamente</span>
+                            <p class="font-semibold text-slate-900">&#8226; Verificar todas as notas em falta.</p>
+                        </div>
+                        <div class="p-2.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
+                            <span class="font-extrabold text-blue-900 uppercase text-[10px] block">Semanalmente</span>
+                            <p>&#8226; Imprimir encomendas.</p>
+                            <p>&#8226; Tratar das matérias-primas (cálculo e requisições).</p>
+                            <p>&#8226; Criar tabelas nos Sheets.</p>
+                            <p>&#8226; Dar baixa do material que chega (faturas - colas, etc.).</p>
+                            <p>&#8226; Dar baixa na lista do material terminado e anexar as ordens de fabrico.</p>
+                            <p>&#8226; Enviar um mail ao <strong>David</strong> a pedir as ordens de fabrico das encomendas a fazer.</p>
+                        </div>
+                        <div class="p-2 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
+                            <span class="font-extrabold text-amber-900 uppercase text-[10px] block">Semanalmente ou Quinzenalmente</span>
+                            <p>&#8226; Descrição de acabamentos (<strong>Fernando Inf.</strong>).</p>
+                        </div>
+                        <div class="p-2 bg-slate-100 border border-slate-200 rounded-xl space-y-1">
+                            <span class="font-extrabold text-slate-800 uppercase text-[10px] block">Quinzenalmente ou Mensalmente</span>
+                            <p>&#8226; Dar baixa do material de corte (ex: <strong>Lucas</strong>) &rarr; <em>Entradas e Saídas Diversas</em>.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. Exequibilidades e Impressão de Listas -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -648,7 +765,7 @@
                     </div>
                 </section>
 
-                <!-- 3. Processo Semanal quanto aos Desenhos -->
+                <!-- 6. Processo Semanal quanto aos Desenhos -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -688,7 +805,7 @@
                     </div>
                 </section>
 
-                <!-- 4. Ver Emails Recebidos -->
+                <!-- 7. Ver Emails Recebidos -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -704,7 +821,7 @@
                     </ul>
                 </section>
 
-                <!-- 5. Cálculo de Matérias-Primas (MaxCut) & Exceções -->
+                <!-- 8. Cálculo de Matérias-Primas (MaxCut) & Exceções -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -727,7 +844,7 @@
                     </div>
                 </section>
 
-                <!-- 6. Procurar Referências & Fazer Requisições (Iduna / Sage) -->
+                <!-- 9. Procurar Referências & Fazer Requisições (Iduna / Sage) -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -750,7 +867,7 @@
                     </div>
                 </section>
 
-                <!-- 7. Receção de Material, Baixa & Entregas Parciais -->
+                <!-- 10. Receção de Material, Baixa & Entregas Parciais -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -770,7 +887,7 @@
                     </div>
                 </section>
 
-                <!-- 8. Dar Baixa do Material de Corte -->
+                <!-- 11. Dar Baixa do Material de Corte -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -793,7 +910,7 @@
                     </div>
                 </section>
 
-                <!-- 9. Regras de Orlas & Pré-Fresador da Orladora -->
+                <!-- 12. Regras de Orlas & Pré-Fresador da Orladora -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -812,7 +929,7 @@
                     </ul>
                 </section>
 
-                <!-- 10. Stock Standard (Alerta abaixo de 50%) -->
+                <!-- 13. Stock Standard (Alerta abaixo de 50%) -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -832,7 +949,7 @@
                     </ul>
                 </section>
 
-                <!-- 11. Organização de Fábrica, Pilhas & Notas de Armazém -->
+                <!-- 14. Organização de Fábrica, Pilhas & Notas de Armazém -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
