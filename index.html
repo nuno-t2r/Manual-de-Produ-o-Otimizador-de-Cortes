@@ -1102,32 +1102,32 @@
                     <p id="cloud-error-detail" class="font-mono text-[11px] bg-white px-2 py-1 rounded border border-rose-200"></p>
                     <p>1. Vai a <strong>Authentication &rarr; Sign-in method</strong> e ativa <strong>Anónimo (Anonymous)</strong>.<br>
                     2. Vai a <strong>Firestore Database &rarr; Rules</strong>, cola <code class="font-mono font-bold">allow read, write: if true;</code> e clica em <strong>Publicar</strong>.</p>
-                </div>
-
-                <!-- Formulário de Nova Tarefa -->
-                <div class="flex flex-col sm:flex-row gap-2.5" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarTarefaTodo();}">
-                    <input
-                        type="text"
-                        id="todo-input"
-                        placeholder="Escreve aqui o que tens de fazer (ex: Pedir orla branco polar 23x2, falar c/ Nuno sobre tampas...)"
-                        class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-600"
-                    >
-                    <button
-                        type="button"
-                        onclick="adicionarTarefaTodo()"
-                        class="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs sm:text-sm font-extrabold shadow-xs cursor-pointer whitespace-nowrap"
-                    >
-                        + Adicionar Tarefa
-                    </button>
-                </div>
-
-                <!-- Filtros -->
-                <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    <div class="flex items-center gap-1.5">
+                <!-- Filtros e Barra de Pesquisa -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+                    <div class="flex flex-wrap items-center gap-1.5">
                         <button type="button" onclick="mudarFiltroTodo('todas')" id="todo-filter-todas" class="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Todas</button>
                         <button type="button" onclick="mudarFiltroTodo('pendentes')" id="todo-filter-pendentes" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">Por Fazer</button>
                         <button type="button" onclick="mudarFiltroTodo('feitas')" id="todo-filter-feitas" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">Feitas</button>
                     </div>
+                    <div class="relative flex-1 sm:max-w-xs">
+                        <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs pointer-events-none">&#128269;</span>
+                        <input
+                            type="text"
+                            id="todo-search-input"
+                            oninput="pesquisarTodos()"
+                            placeholder="Procurar nas notas..."
+                            class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-8 pr-7 py-1.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600 transition"
+                        >
+                        <button
+                            type="button"
+                            id="todo-clear-search-btn"
+                            onclick="limparPesquisaTodo()"
+                            class="hidden absolute inset-y-0 right-2.5 flex items-center text-slate-400 hover:text-slate-700 text-xs font-bold cursor-pointer"
+                            title="Limpar pesquisa"
+                        >&#10005;</button>
+                    </div>
+                </div>
+                <div class="flex justify-end">
                     <span class="text-[11px] font-semibold text-slate-500">
                         &#128274; Registo permanente (sem botão de apagar)
                     </span>
@@ -3070,6 +3070,27 @@
         let todosLista = [];
         window._todosAtuais = todosLista;
         let filtroTodoAtual = "todas";
+        let termoPesquisaTodo = "";
+
+        function pesquisarTodos() {
+            const input = document.getElementById("todo-search-input");
+            const clearBtn = document.getElementById("todo-clear-search-btn");
+            termoPesquisaTodo = (input ? input.value : "").trim().toLowerCase();
+            if (clearBtn) {
+                if (termoPesquisaTodo) clearBtn.classList.remove("hidden");
+                else clearBtn.classList.add("hidden");
+            }
+            renderizarTodos();
+        }
+
+        function limparPesquisaTodo() {
+            const input = document.getElementById("todo-search-input");
+            if (input) input.value = "";
+            termoPesquisaTodo = "";
+            const clearBtn = document.getElementById("todo-clear-search-btn");
+            if (clearBtn) clearBtn.classList.add("hidden");
+            renderizarTodos();
+        }
 
         function carregarTodos() {
             try {
@@ -3272,15 +3293,27 @@
             }
 
             const filtradas = todosLista.filter(t => {
-                if (filtroTodoAtual === "pendentes") return !t.feito;
-                if (filtroTodoAtual === "feitas") return t.feito;
+                if (filtroTodoAtual === "pendentes" && t.feito) return false;
+                if (filtroTodoAtual === "feitas" && !t.feito) return false;
+
+                if (termoPesquisaTodo) {
+                    const textoPrincipal = (t.texto || "").toLowerCase();
+                    const notasTexto = Array.isArray(t.notas)
+                        ? t.notas.map(n => n.texto || "").join(" ").toLowerCase()
+                        : "";
+                    if (!textoPrincipal.includes(termoPesquisaTodo) && !notasTexto.includes(termoPesquisaTodo)) {
+                        return false;
+                    }
+                }
                 return true;
             });
 
             if (filtradas.length === 0) {
                 const msgVazio = todosLista.length === 0
                     ? 'Ainda não tens tarefas apontadas. Escreve acima e carrega em <strong>+ Adicionar Tarefa</strong>.'
-                    : 'Nenhuma tarefa encontrada neste filtro.';
+                    : (termoPesquisaTodo
+                        ? `Nenhuma nota encontrada para "<strong>${escapeHtml(termoPesquisaTodo)}</strong>".`
+                        : 'Nenhuma tarefa encontrada neste filtro.');
                 container.innerHTML = `
                     <div class="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 text-xs sm:text-sm">
                         ${msgVazio}
@@ -3394,4 +3427,4 @@
         });
     </script>
 </body>
-    </html>
+</html>
