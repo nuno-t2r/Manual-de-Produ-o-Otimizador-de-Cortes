@@ -1102,6 +1102,25 @@
                     <p id="cloud-error-detail" class="font-mono text-[11px] bg-white px-2 py-1 rounded border border-rose-200"></p>
                     <p>1. Vai a <strong>Authentication &rarr; Sign-in method</strong> e ativa <strong>Anónimo (Anonymous)</strong>.<br>
                     2. Vai a <strong>Firestore Database &rarr; Rules</strong>, cola <code class="font-mono font-bold">allow read, write: if true;</code> e clica em <strong>Publicar</strong>.</p>
+                </div>
+
+                <!-- Formulário para Adicionar Nova Tarefa / Nota -->
+                <div class="flex flex-col sm:flex-row gap-2.5 pt-1" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarTarefaTodo();}">
+                    <input
+                        type="text"
+                        id="todo-input"
+                        placeholder="Escrever nova tarefa, recado ou nota rápida (ex: Ligar ao fornecedor, pedir cola...)..."
+                        class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-600 transition"
+                    >
+                    <button
+                        type="button"
+                        onclick="adicionarTarefaTodo()"
+                        class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs sm:text-sm font-extrabold shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                        + Adicionar Tarefa
+                    </button>
+                </div>
+
                 <!-- Filtros e Barra de Pesquisa -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                     <div class="flex flex-wrap items-center gap-1.5">
