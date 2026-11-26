@@ -148,7 +148,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-1.5 md:hidden">
-                        <button type="button" onclick="toggleModal('github-modal', true)" class="p-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer">&#9881;</button>
+                        <button type="button" onclick="toggleModal('github-modal', false); toggleModal('github-modal', true);" class="p-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer">&#9881;</button>
                         <button type="button" onclick="bloquearManual()" title="Bloquear ecrã" class="p-2 rounded-xl bg-slate-800 text-blue-400 text-xs font-bold cursor-pointer">&#128274;</button>
                     </div>
                 </div>
@@ -725,22 +725,62 @@
                     </div>
                 </section>
 
-                <!-- 5. Exequibilidades e Impressão de Listas -->
+                <!-- 5. Exequibilidades, Descodificador Rápido e Impressão de Listas -->
                 <section class="searchable-card bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                         <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
                             <span class="w-2 h-5 bg-teal-600 rounded-full inline-block"></span>
-                            Exequibilidades & Impressão de Listas
+                            Exequibilidades & Descodificador Rápido
                         </h2>
                     </div>
-                    <div class="space-y-2.5 text-xs text-slate-700 leading-relaxed">
-                        <div class="p-2.5 bg-teal-50/70 border border-teal-200 rounded-xl space-y-1">
-                            <p class="font-bold text-teal-950">Exemplo de Código: <code class="font-mono bg-white px-1.5 py-0.5 rounded border border-teal-300">H260100025</code></p>
-                            <p>&#8226; <strong>H:</strong> Conjunto (Mesa, Display, Armário)</p>
-                            <p>&#8226; <strong>26:</strong> Ano da encomenda (2026)</p>
-                            <p>&#8226; <strong>0100:</strong> Número (Pedido = <code class="font-mono font-bold">20260100</code>)</p>
-                            <p>&#8226; <strong>02:</strong> Linha (o que interessa está na 2.ª linha)</p>
+
+                    <!-- Descodificador Interativo de Códigos -->
+                    <div class="p-3 bg-slate-900 text-slate-100 rounded-xl space-y-2.5 border border-slate-800">
+                        <div class="flex items-center justify-between gap-2">
+                            <label for="order-decoder-input" class="text-[11px] font-extrabold uppercase tracking-wide text-teal-400">
+                                &#128270; Descodificador Rápido de Código
+                            </label>
+                            <button type="button" onclick="limparDescodificador()" class="text-[10px] text-slate-400 hover:text-white underline cursor-pointer">Limpar</button>
                         </div>
+                        <div class="flex gap-1.5">
+                            <input
+                                type="text"
+                                id="order-decoder-input"
+                                oninput="descodificarCodigoEncomenda()"
+                                placeholder="Cola ou escreve (ex: H260100025)"
+                                class="flex-1 font-mono font-extrabold uppercase bg-slate-950 text-white placeholder-slate-500 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-400"
+                            >
+                            <button
+                                type="button"
+                                id="btn-copy-iduna-pedido"
+                                onclick="copiarPedidoIduna()"
+                                class="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-extrabold whitespace-nowrap cursor-pointer"
+                                title="Copiar Pedido Iduna para colar no sistema"
+                            >
+                                &#128203; Copiar Pedido
+                            </button>
+                        </div>
+                        <div id="order-decoder-result" class="grid grid-cols-2 gap-1.5 text-[11px]">
+                            <div class="bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                                <span class="text-slate-400 block text-[10px]">Pedido Iduna:</span>
+                                <strong id="dec-pedido" class="font-mono text-sm font-black text-teal-300">20260100</strong>
+                            </div>
+                            <div class="bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                                <span class="text-slate-400 block text-[10px]">Linha (Select):</span>
+                                <strong id="dec-linha" class="font-mono text-sm font-black text-amber-300">02</strong>
+                            </div>
+                            <div class="bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                                <span class="text-slate-400 block text-[10px]">Conjunto / Ano:</span>
+                                <strong id="dec-conjunto" class="font-mono font-bold text-white">H &bull; 2026</strong>
+                            </div>
+                            <div class="bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                                <span class="text-slate-400 block text-[10px]">Tipo Encomenda:</span>
+                                <strong id="dec-tipo" class="font-bold text-emerald-400">Normal (100...)</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
                         <p><strong>Para ir a uma exequibilidade:</strong><br>
                         Ir a <strong>Comercial / Exequibilidades / Pedido</strong> &rarr; Colocar Ano + Número (<code class="font-mono">20260100</code>) &rarr; Carregar na mãozinha (<strong>Select</strong>) &rarr; Procurar a linha (<strong>02</strong>) e carregar outra vez na mãozinha (<strong>Select</strong>) &rarr; Ver em <strong>Anexos</strong> no menu verde em cima (para ver se tem desenhos) &rarr; Carregar no símbolo <strong>PDF</strong>.</p>
                         <div class="p-2.5 bg-slate-100 rounded-xl font-medium space-y-1">
@@ -1681,6 +1721,118 @@
         }
 
         // =================================================================
+        // DESCODIFICADOR RÁPIDO DE CÓDIGOS DE ENCOMENDA (EXEQUIBILIDADES)
+        // =================================================================
+        let pedidoIdunaAtualParaCopiar = "20260100";
+
+        function descodificarCodigoEncomenda() {
+            const input = document.getElementById("order-decoder-input");
+            const pedidoEl = document.getElementById("dec-pedido");
+            const linhaEl = document.getElementById("dec-linha");
+            const conjuntoEl = document.getElementById("dec-conjunto");
+            const tipoEl = document.getElementById("dec-tipo");
+
+            if (!input || !pedidoEl) return;
+
+            const raw = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+            // Se estiver vazio, mostra o exemplo padrão H260100025
+            if (!raw) {
+                pedidoIdunaAtualParaCopiar = "20260100";
+                pedidoEl.textContent = "20260100";
+                linhaEl.textContent = "02";
+                conjuntoEl.textContent = "H • 2026 (Ex.)";
+                tipoEl.textContent = "Normal (100...)";
+                tipoEl.className = "font-bold text-emerald-400";
+                return;
+            }
+
+            // Caso 1: Código completo com letra inicial (ex: H260100025 ou M260150031)
+            const matchLetra = raw.match(/^([A-Z])(\d{2})(\d{4})(\d{2})?/);
+            if (matchLetra) {
+                const letra = matchLetra[1];
+                const ano2 = matchLetra[2];
+                const num4 = matchLetra[3];
+                const linha2 = matchLetra[4] || "--";
+                const ano4 = "20" + ano2;
+                const pedidoIduna = ano4 + num4;
+
+                pedidoIdunaAtualParaCopiar = pedidoIduna;
+                pedidoEl.textContent = pedidoIduna;
+                linhaEl.textContent = linha2;
+                conjuntoEl.textContent = `${letra} • ${ano4}`;
+
+                if (num4.startsWith("6")) {
+                    tipoEl.textContent = "Reclamação (600...)";
+                    tipoEl.className = "font-bold text-rose-400";
+                } else {
+                    tipoEl.textContent = "Normal (100...)";
+                    tipoEl.className = "font-bold text-emerald-400";
+                }
+                return;
+            }
+
+            // Caso 2: Código numérico direto (ex: 100704, 600123 ou 2026010002)
+            const matchNum = raw.match(/^(\d+)/);
+            if (matchNum) {
+                const digits = matchNum[1];
+                if (digits.startsWith("20") && digits.length >= 8) {
+                    const ano4 = digits.slice(0, 4);
+                    const num4 = digits.slice(4, 8);
+                    const linha2 = digits.length >= 10 ? digits.slice(8, 10) : "--";
+                    const pedidoIduna = ano4 + num4;
+
+                    pedidoIdunaAtualParaCopiar = pedidoIduna;
+                    pedidoEl.textContent = pedidoIduna;
+                    linhaEl.textContent = linha2;
+                    conjuntoEl.textContent = `Sem letra • ${ano4}`;
+                    tipoEl.textContent = num4.startsWith("6") ? "Reclamação (600...)" : "Normal (100...)";
+                    tipoEl.className = num4.startsWith("6") ? "font-bold text-rose-400" : "font-bold text-emerald-400";
+                } else {
+                    pedidoIdunaAtualParaCopiar = digits;
+                    pedidoEl.textContent = digits;
+                    linhaEl.textContent = "--";
+                    conjuntoEl.textContent = "Código Direto";
+                    if (digits.startsWith("600")) {
+                        tipoEl.textContent = "Reclamação (600...)";
+                        tipoEl.className = "font-bold text-rose-400";
+                    } else if (digits.startsWith("100")) {
+                        tipoEl.textContent = "Normal (100...)";
+                        tipoEl.className = "font-bold text-emerald-400";
+                    } else {
+                        tipoEl.textContent = "Verificar prefixo";
+                        tipoEl.className = "font-bold text-slate-300";
+                    }
+                }
+            }
+        }
+
+        function copiarPedidoIduna() {
+            const texto = pedidoIdunaAtualParaCopiar || "20260100";
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(texto).then(() => {
+                    mostrarToast(`Pedido ${texto} copiado! Cola no Iduna.`);
+                }).catch(() => {
+                    mostrarToast(`Pedido Iduna: ${texto}`);
+                });
+            } else {
+                const tmp = document.createElement("input");
+                tmp.value = texto;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand("copy");
+                document.body.removeChild(tmp);
+                mostrarToast(`Pedido ${texto} copiado! Cola no Iduna.`);
+            }
+        }
+
+        function limparDescodificador() {
+            const input = document.getElementById("order-decoder-input");
+            if (input) input.value = "";
+            descodificarCodigoEncomenda();
+        }
+
+        // =================================================================
         // ROTINAS PERIÓDICAS (OPÇÃO A: REINÍCIO AUTOMÁTICO POR CICLO + DATA)
         // =================================================================
         const ROTINAS_DEFINICAO = [
@@ -1739,7 +1891,6 @@
                 return `D-${ano}-${mes}-${dia}`;
             }
             if (ciclo === "semanal") {
-                // Semana ISO (segunda-feira a domingo)
                 const temp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
                 const dayNum = temp.getUTCDay() || 7;
                 temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
@@ -1751,7 +1902,6 @@
                 const q = d.getDate() <= 15 ? "Q1" : "Q2";
                 return `Q-${ano}-${mes}-${q}`;
             }
-            // mensal
             return `M-${ano}-${mes}`;
         }
 
@@ -1803,7 +1953,6 @@
             const estaMarcadoNoCiclo = Boolean(reg.checked && reg.cycleKey === cicloAtual);
 
             if (estaMarcadoNoCiclo) {
-                // Desmarcar no ciclo atual (restaura último check anterior se existir)
                 rotinasEstado[id] = {
                     checked: false,
                     cycleKey: "",
@@ -3440,10 +3589,11 @@
             carregarCatalogo();
             carregarTodos();
             carregarRotinas();
+            descodificarCodigoEncomenda();
             aoMudarMaterial();
             atualizarPreviewPeca();
             executarOtimizacao(false);
         });
     </script>
 </body>
-</html>
+    </html>
