@@ -102,7 +102,7 @@
                 <p><strong>2. Como guardar alterações no GitHub Pages:</strong><br>
                 Depois de colares ou editares o código, clica em <strong>Commit changes...</strong> e aguarda cerca de 1 minuto até o GitHub Pages atualizar o site.</p>
                 <p><strong>3. Sincronização na Nuvem Ativa (idunaproject):</strong><br>
-                A tua <strong>To-Do List</strong>, as <strong>Rotinas Periódicas</strong> e o <strong>Catálogo de Referências</strong> (incluindo fotos) estão ligados ao teu Firebase e sincronizam automaticamente entre PC, telemóvel e tablet.</p>
+                A tua <strong>To-Do List</strong>, as <strong>Rotinas Periódicas</strong>, o <strong>Stock Standard</strong> e o <strong>Catálogo de Referências</strong> (incluindo fotos) estão ligados ao teu Firebase e sincronizam automaticamente entre PC, telemóvel e tablet.</p>
             </div>
             <div class="flex justify-end pt-2">
                 <button type="button" onclick="toggleModal('github-modal', false)" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Fechar</button>
@@ -148,7 +148,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-1.5 md:hidden">
-                        <button type="button" onclick="toggleModal('github-modal', false); toggleModal('github-modal', true);" class="p-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer">&#9881;</button>
+                        <button type="button" onclick="toggleModal('github-modal', true)" class="p-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer">&#9881;</button>
                         <button type="button" onclick="bloquearManual()" title="Bloquear ecrã" class="p-2 rounded-xl bg-slate-800 text-blue-400 text-xs font-bold cursor-pointer">&#128274;</button>
                     </div>
                 </div>
@@ -171,6 +171,13 @@
                             title="Limpar pesquisa"
                         >&#10005;</button>
                     </div>
+                    <div class="hidden md:flex items-center gap-1.5">
+                        <button type="button" onclick="toggleModal('github-modal', true)" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer" title="Definições e PIN">&#9881;</button>
+                        <button type="button" onclick="bloquearManual()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-bold cursor-pointer" title="Bloquear ecrã">&#128274;</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- 5 Separadores Principais -->
             <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-800 overflow-x-auto no-scrollbar">
                 <button
@@ -962,6 +969,7 @@
                             <span class="w-2 h-5 bg-amber-500 rounded-full inline-block"></span>
                             Stock Standard (Pedir &lt; 50%)
                         </h2>
+                        <button type="button" onclick="mudarSeparador('tab-stock')" class="text-[11px] font-extrabold text-amber-800 hover:underline cursor-pointer">Abrir Painel &rarr;</button>
                     </div>
                     <p class="text-[11px] text-slate-500 font-semibold">Pedir sempre que passar abaixo de 50% destas quantidades:</p>
                     <ul class="space-y-1.5 text-xs text-slate-700">
@@ -1844,6 +1852,326 @@
             const cont = document.getElementById(containerId);
             if (!cont) return;
             cont.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+
+        // =================================================================
+        // DESCODIFICADOR RÁPIDO DE CÓDIGOS DE ENCOMENDA (IDUNA)
+        // =================================================================
+        function descodificarCodigoEncomenda() {
+            const input = document.getElementById("order-decoder-input");
+            const pedidoEl = document.getElementById("dec-pedido");
+            const linhaEl = document.getElementById("dec-linha");
+            const conjEl = document.getElementById("dec-conjunto");
+            const tipoEl = document.getElementById("dec-tipo");
+            if (!input || !pedidoEl || !linhaEl || !conjEl || !tipoEl) return;
+
+            const raw = (input.value || "").trim().toUpperCase().replace(/\s+/g, "");
+            const codigo = raw || "H260100025";
+
+            let conjunto = "--";
+            let anoCompleto = "--";
+            let pedidoIduna = "--";
+            let linha = "--";
+            let tipoTexto = "Normal";
+            let tipoClasse = "font-bold text-emerald-400";
+
+            const matchLetra = codigo.match(/^([A-Z])(\d{2})(\d{4})(\d{2,3})?$/);
+            const matchAno4 = codigo.match(/^(20\d{2})(\d{4})(\d{2,3})?$/);
+            const matchSimples = codigo.match(/^([16]00\d{2,6})$/);
+
+            if (matchLetra) {
+                conjunto = matchLetra[1];
+                anoCompleto = "20" + matchLetra[2];
+                const numEnc = matchLetra[3];
+                pedidoIduna = anoCompleto + numEnc;
+                linha = matchLetra[4] ? matchLetra[4].slice(0, 2) : "01";
+                if (numEnc.startsWith("6")) {
+                    tipoTexto = "Reclamação (600...)";
+                    tipoClasse = "font-bold text-rose-400";
+                } else {
+                    tipoTexto = "Normal (100...)";
+                }
+            } else if (matchAno4) {
+                anoCompleto = matchAno4[1];
+                const numEnc = matchAno4[2];
+                pedidoIduna = anoCompleto + numEnc;
+                linha = matchAno4[3] ? matchAno4[3].slice(0, 2) : "01";
+                if (numEnc.startsWith("6")) {
+                    tipoTexto = "Reclamação (600...)";
+                    tipoClasse = "font-bold text-rose-400";
+                } else {
+                    tipoTexto = "Normal (100...)";
+                }
+            } else if (matchSimples) {
+                const num = matchSimples[1];
+                const anoAtual = new Date().getFullYear();
+                pedidoIduna = String(anoAtual) + num;
+                if (num.startsWith("600")) {
+                    tipoTexto = "Reclamação (600...)";
+                    tipoClasse = "font-bold text-rose-400";
+                } else {
+                    tipoTexto = "Normal (100...)";
+                }
+            } else {
+                const digitos = codigo.replace(/\D/g, "");
+                if (digitos.length >= 6) {
+                    const ano2 = digitos.slice(0, 2);
+                    const num4 = digitos.slice(2, 6);
+                    pedidoIduna = (ano2.startsWith("20") ? digitos.slice(0, 8) : "20" + ano2 + num4);
+                    if (digitos.length >= 8) {
+                        linha = digitos.slice(6, 8);
+                    }
+                    const letraIni = codigo.match(/^[A-Z]+/);
+                    if (letraIni) conjunto = letraIni[0];
+                    if (pedidoIduna.includes("600")) {
+                        tipoTexto = "Reclamação (600...)";
+                        tipoClasse = "font-bold text-rose-400";
+                    }
+                } else {
+                    pedidoIduna = codigo;
+                }
+            }
+
+            pedidoEl.textContent = pedidoIduna;
+            linhaEl.textContent = linha;
+            conjEl.textContent = `${conjunto} • ${anoCompleto}`;
+            tipoEl.textContent = tipoTexto;
+            tipoEl.className = tipoClasse;
+        }
+
+        function limparDescodificador() {
+            const input = document.getElementById("order-decoder-input");
+            if (input) {
+                input.value = "";
+                input.focus();
+            }
+            descodificarCodigoEncomenda();
+        }
+
+        function copiarPedidoIduna() {
+            const pedidoEl = document.getElementById("dec-pedido");
+            const valor = pedidoEl ? pedidoEl.textContent.trim() : "";
+            if (!valor || valor === "--") return;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(valor).then(() => {
+                    mostrarToast(`Pedido ${valor} copiado para colar no Iduna!`);
+                }).catch(() => {
+                    mostrarToast(`Pedido: ${valor}`);
+                });
+            } else {
+                const tmp = document.createElement("textarea");
+                tmp.value = valor;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand("copy");
+                document.body.removeChild(tmp);
+                mostrarToast(`Pedido ${valor} copiado para colar no Iduna!`);
+            }
+        }
+
+        // =================================================================
+        // ROTINAS PERIÓDICAS (OPÇÃO A: REINÍCIO AUTOMÁTICO POR CICLO)
+        // =================================================================
+        const ROTINAS_DEFINICAO = [
+            {
+                grupo: "Diariamente",
+                ciclo: "diario",
+                corBox: "bg-rose-50/70 border-rose-200",
+                corTitulo: "text-rose-900",
+                itens: [
+                    { id: "rot_diaria_notas", texto: "Verificar todas as notas em falta." }
+                ]
+            },
+            {
+                grupo: "Semanalmente",
+                ciclo: "semanal",
+                corBox: "bg-blue-50/70 border-blue-200",
+                corTitulo: "text-blue-900",
+                itens: [
+                    { id: "rot_sem_encomendas", texto: "Imprimir encomendas." },
+                    { id: "rot_sem_mp", texto: "Tratar das matérias-primas (cálculo e requisições)." },
+                    { id: "rot_sem_sheets", texto: "Criar tabelas nos Sheets." },
+                    { id: "rot_sem_baixa_chega", texto: "Dar baixa do material que chega (faturas - colas, etc.)." },
+                    { id: "rot_sem_baixa_terminado", texto: "Dar baixa na lista do material terminado e anexar as ordens de fabrico." },
+                    { id: "rot_sem_email_david", texto: "Enviar um mail ao David a pedir as ordens de fabrico das encomendas a fazer." }
+                ]
+            },
+            {
+                grupo: "Semanalmente ou Quinzenalmente",
+                ciclo: "quinzenal",
+                corBox: "bg-amber-50/70 border-amber-200",
+                corTitulo: "text-amber-900",
+                itens: [
+                    { id: "rot_quinz_acabamentos", texto: "Descrição de acabamentos (Fernando Inf.)." }
+                ]
+            },
+            {
+                grupo: "Quinzenalmente ou Mensalmente",
+                ciclo: "mensal",
+                corBox: "bg-slate-50 border-slate-200",
+                corTitulo: "text-slate-900",
+                itens: [
+                    { id: "rot_mensal_corte", texto: "Dar baixa do material de corte (ex: Lucas) → Entradas e Saídas Diversas." }
+                ]
+            }
+        ];
+
+        let rotinasEstado = {};
+
+        function obterChaveCicloAtual(tipoCiclo) {
+            const d = new Date();
+            const ano = d.getFullYear();
+            const mes = String(d.getMonth() + 1).padStart(2, "0");
+            const dia = String(d.getDate()).padStart(2, "0");
+
+            if (tipoCiclo === "diario") {
+                return `D_${ano}-${mes}-${dia}`;
+            }
+            if (tipoCiclo === "semanal") {
+                const temp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                const dayNum = temp.getUTCDay() || 7;
+                temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
+                const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+                const weekNo = Math.ceil((((temp - yearStart) / 86400000) + 1) / 7);
+                return `S_${temp.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+            }
+            if (tipoCiclo === "quinzenal") {
+                const quinzena = d.getDate() <= 15 ? "Q1" : "Q2";
+                return `Q_${ano}-${mes}-${quinzena}`;
+            }
+            return `M_${ano}-${mes}`;
+        }
+
+        function carregarRotinas() {
+            try {
+                const guardado = localStorage.getItem(STORAGE_KEY_ROTINAS);
+                if (guardado) {
+                    const parsed = JSON.parse(guardado);
+                    if (parsed && typeof parsed === "object") {
+                        rotinasEstado = parsed;
+                    }
+                }
+            } catch (e) {}
+            renderizarRotinasPeriodicas();
+        }
+
+        function salvarRotinas() {
+            try {
+                localStorage.setItem(STORAGE_KEY_ROTINAS, JSON.stringify(rotinasEstado));
+            } catch (e) {}
+            renderizarRotinasPeriodicas();
+            if (window._cloudSync && window._cloudSync.ready) {
+                window._cloudSync.saveRotinas(rotinasEstado);
+            }
+        }
+
+        window.fundirRotinasComNuvem = function(remObj) {
+            if (!remObj || typeof remObj !== "object") return;
+            let alterou = false;
+            Object.keys(remObj).forEach(k => {
+                const rem = remObj[k];
+                const loc = rotinasEstado[k];
+                if (!loc || (Number(rem.updatedAt) || 0) > (Number(loc.updatedAt) || 0)) {
+                    rotinasEstado[k] = rem;
+                    alterou = true;
+                }
+            });
+            if (alterou) {
+                try {
+                    localStorage.setItem(STORAGE_KEY_ROTINAS, JSON.stringify(rotinasEstado));
+                } catch (e) {}
+                renderizarRotinasPeriodicas();
+            }
+        };
+
+        function alternarCheckRotina(itemId, tipoCiclo) {
+            const cicloAtual = obterChaveCicloAtual(tipoCiclo);
+            const registo = rotinasEstado[itemId] || {};
+            const jaFeitoNesteCiclo = Boolean(registo.checked) && registo.cycleKey === cicloAtual;
+
+            if (jaFeitoNesteCiclo) {
+                rotinasEstado[itemId] = {
+                    checked: false,
+                    cycleKey: cicloAtual,
+                    lastCheckText: registo.prevCheckText || "",
+                    prevCheckText: registo.prevCheckText || "",
+                    updatedAt: Date.now()
+                };
+            } else {
+                const agoraTexto = formatarDataHoraAtual();
+                rotinasEstado[itemId] = {
+                    checked: true,
+                    cycleKey: cicloAtual,
+                    lastCheckText: agoraTexto,
+                    prevCheckText: registo.lastCheckText || "",
+                    updatedAt: Date.now()
+                };
+                mostrarToast("Rotina concluída e registada!");
+            }
+            salvarRotinas();
+        }
+
+        function renderizarRotinasPeriodicas() {
+            const container = document.getElementById("rotinas-periodicas-container");
+            const badge = document.getElementById("rotinas-progress-badge");
+            if (!container) return;
+
+            let totalItens = 0;
+            let feitosNoCiclo = 0;
+
+            const htmlGrupos = ROTINAS_DEFINICAO.map(grupo => {
+                const cicloAtual = obterChaveCicloAtual(grupo.ciclo);
+
+                const htmlItens = grupo.itens.map(item => {
+                    totalItens++;
+                    const reg = rotinasEstado[item.id] || {};
+                    const ativoNoCiclo = Boolean(reg.checked) && reg.cycleKey === cicloAtual;
+                    if (ativoNoCiclo) feitosNoCiclo++;
+
+                    let etiquetaData = "";
+                    if (ativoNoCiclo && reg.lastCheckText) {
+                        etiquetaData = `<span class="block text-[10px] font-bold text-emerald-700 mt-0.5">&#10003; Feito em: ${escapeHtml(reg.lastCheckText)}</span>`;
+                    } else if (reg.lastCheckText) {
+                        etiquetaData = `<span class="block text-[10px] font-semibold text-amber-800 mt-0.5">&#8634; Último check: ${escapeHtml(reg.lastCheckText)}</span>`;
+                    }
+
+                    const textoClass = ativoNoCiclo
+                        ? "line-through text-slate-500 font-medium"
+                        : "text-slate-800 font-semibold";
+
+                    return `
+                        <label class="flex items-start gap-2.5 p-1.5 rounded-lg hover:bg-white/80 cursor-pointer select-none transition">
+                            <input
+                                type="checkbox"
+                                ${ativoNoCiclo ? "checked" : ""}
+                                onchange="alternarCheckRotina('${item.id}', '${grupo.ciclo}')"
+                                class="mt-0.5 w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                            >
+                            <div class="flex-1 leading-snug">
+                                <span class="${textoClass}">${escapeHtml(item.texto)}</span>
+                                ${etiquetaData}
+                            </div>
+                        </label>
+                    `;
+                }).join("");
+
+                return `
+                    <div class="p-2.5 ${grupo.corBox} border rounded-xl space-y-1">
+                        <p class="font-extrabold ${grupo.corTitulo} uppercase text-[11px] px-1">${escapeHtml(grupo.grupo)}</p>
+                        <div class="space-y-1">${htmlItens}</div>
+                    </div>
+                `;
+            }).join("");
+
+            container.innerHTML = htmlGrupos;
+
+            if (badge) {
+                badge.textContent = `${feitosNoCiclo} / ${totalItens} feitas`;
+                badge.className = feitosNoCiclo === totalItens && totalItens > 0
+                    ? "px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold whitespace-nowrap"
+                    : "px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-extrabold whitespace-nowrap";
+            }
         }
 
         // =================================================================
