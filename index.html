@@ -22,6 +22,20 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        .pc-thin-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        .pc-thin-scroll::-webkit-scrollbar-track {
+            background: rgba(148, 163, 184, 0.15);
+            border-radius: 9999px;
+        }
+        .pc-thin-scroll::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.45);
+            border-radius: 9999px;
+        }
+        .pc-thin-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 0.75);
+        }
         @media print {
             body {
                 background-color: #ffffff !important;
@@ -178,8 +192,8 @@
                 </div>
             </div>
 
-            <!-- 5 Separadores Principais -->
-            <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-800 overflow-x-auto no-scrollbar">
+            <!-- 5 Separadores Principais (scroll horizontal no mobile + wrap/roda do rato no PC) -->
+            <div id="main-tabs-bar" class="flex items-center md:flex-wrap gap-2 mt-3 pt-3 border-t border-slate-800 overflow-x-auto pb-1 pc-thin-scroll">
                 <button
                     type="button"
                     onclick="mudarSeparador('tab-otimizador')"
@@ -360,7 +374,7 @@
                         <div class="flex items-center justify-between mb-1.5">
                             <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Catálogo Rápido (<span id="catalogo-total-count">0</span> guardadas - clica para selecionar):</span>
                         </div>
-                        <div id="catalogo-galeria-grid" class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar"></div>
+                        <div id="catalogo-galeria-grid" class="flex items-center gap-2 overflow-x-auto pb-2 pc-thin-scroll"></div>
                     </div>
                 </div>
 
@@ -721,14 +735,34 @@
                             Rotinas Periódicas (Lista de Coisas a Fazer)
                         </h2>
                         <span id="rotinas-progress-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-extrabold whitespace-nowrap">
-                            0 / 9
+                            0 / 9 feitas
                         </span>
                     </div>
                     <p class="text-[11px] text-slate-500 leading-snug">
                         Marca o visto ao concluir. O visto reinicia automaticamente no ciclo seguinte (dia, semana, quinzena ou mês), mantendo a data do último check.
                     </p>
                     <div id="rotinas-periodicas-container" class="space-y-2.5 text-xs text-slate-700 leading-relaxed">
-                        <!-- Renderizado dinamicamente via JS -->
+                        <div class="p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl space-y-1">
+                            <p class="font-extrabold text-rose-900 uppercase text-[11px] px-1">Diariamente</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Verificar todas as notas em falta.</p>
+                        </div>
+                        <div class="p-2.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
+                            <p class="font-extrabold text-blue-900 uppercase text-[11px] px-1">Semanalmente</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Imprimir encomendas.</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Tratar das matérias-primas (cálculo e requisições).</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Criar tabelas nos Sheets.</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Dar baixa do material que chega (faturas - colas, etc.).</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Dar baixa na lista do material terminado e anexar as ordens de fabrico.</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Enviar um mail ao David a pedir as ordens de fabrico das encomendas a fazer.</p>
+                        </div>
+                        <div class="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
+                            <p class="font-extrabold text-amber-900 uppercase text-[11px] px-1">Semanalmente ou Quinzenalmente</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Descrição de acabamentos (Fernando Inf.).</p>
+                        </div>
+                        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                            <p class="font-extrabold text-slate-900 uppercase text-[11px] px-1">Quinzenalmente ou Mensalmente</p>
+                            <p class="px-1 font-semibold text-slate-800">&#8226; Dar baixa do material de corte (ex: Lucas) &rarr; Entradas e Saídas Diversas.</p>
+                        </div>
                     </div>
                 </section>
 
@@ -1802,6 +1836,25 @@
                     btn.className = "tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap cursor-pointer";
                 }
             });
+
+            if (tabId === "tab-producao") {
+                renderizarRotinasPeriodicas();
+            } else if (tabId === "tab-stock") {
+                renderizarStock();
+            } else if (tabId === "tab-todo") {
+                renderizarTodos();
+            }
+        }
+
+        function ativarScrollHorizontalComRato(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.addEventListener("wheel", function(e) {
+                if (el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                    e.preventDefault();
+                    el.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
         }
 
         function filtrarManual() {
@@ -3993,7 +4046,10 @@
             }).join("");
         }
 
-        window.addEventListener("DOMContentLoaded", function() {
+        function inicializarAplicacao() {
+            if (window._appInicializada) return;
+            window._appInicializada = true;
+
             const pinInput = document.getElementById("pin-input");
             if (pinInput) {
                 pinInput.addEventListener("keydown", function(e) {
@@ -4012,6 +4068,9 @@
                 }
             } catch (e) {}
 
+            ativarScrollHorizontalComRato("main-tabs-bar");
+            ativarScrollHorizontalComRato("catalogo-galeria-grid");
+
             carregarCatalogo();
             carregarTodos();
             carregarRotinas();
@@ -4020,7 +4079,13 @@
             aoMudarMaterial();
             atualizarPreviewPeca();
             executarOtimizacao(false);
-        });
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", inicializarAplicacao);
+        } else {
+            inicializarAplicacao();
+        }
     </script>
 </body>
     </html>
